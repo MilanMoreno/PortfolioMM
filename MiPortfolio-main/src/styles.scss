@@ -1,0 +1,163 @@
+:root {
+  --color-background-primary: #141D2F;
+  --color-accent-primary: #70E61C;
+  --color-accent-secondary: #9747FF;
+  --color-text-primary: #FFFFFF;
+  --header-height: 109px;
+  --footer-height: 200px;
+
+  --font-family-primary: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, sans-serif;
+  --font-size-base: 16px;
+  --font-size-heading-large: 90px;
+  --font-size-heading-medium: 32px;
+  --font-size-heading-small: 24px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: var(--font-family-primary);
+  cursor: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+}
+
+html {
+  scroll-behavior: smooth;
+  background-color: var(--color-background-primary);
+}
+
+body {
+  margin: 0;
+  overflow-x: hidden;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-base);
+  line-height: 1.5;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+::-webkit-scrollbar {
+  width: 5px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-background-primary);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-accent-secondary);
+  border-radius: 10px;
+}
+
+/* Note: :hover on pseudo-elements like ::-webkit-scrollbar-thumb is not standard and might not work consistently.
+   Consider alternative approaches if hover styling is crucial. */
+
+.text-center { text-align: center; }
+.hidden { display: none !important; }
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-20px); }
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+@keyframes slideIn {
+  from { transform: translateX(-100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* Stil für die Trennlinien */
+.section-divider {
+  width: 100%;
+  height: 2px; /* oder die von dir verwendete Höhe */
+  background-color: var(--color-accent-secondary); /* Using existing accent color */
+  margin: 50px 0; /* Abstand oben und unten, ändere diesen nach Bedarf */
+  position: relative;
+  left: 0;
+  right: 0;
+}
+
+/* Wenn du ein Container-Element mit max-width verwendest, stelle sicher, dass die Linie darüber hinausgeht */
+.section-container {
+  position: relative;
+  overflow: visible; /* Wichtig, damit die Linie nicht abgeschnitten wird */
+}
+
+.section-container .section-divider {
+  width: 100vw; /* Volle Breite des Viewports */
+  position: relative;
+  left: 50%;
+  transform: translateX(-50%); /* Zentrieren */
+}
+
+/* Responsive Regeln für kleine Bildschirme bis 300px */
+@media (max-width: 320px) {
+  /* Allgemeine Anpassungen */
+  body {
+    font-size: 14px; /* Kleinere Schriftgröße für mobile Geräte */
+  }
+
+  h1 {
+    font-size: 24px;
+  }
+
+  h2 {
+    font-size: 20px;
+  }
+
+  /* Buttons richtig anzeigen */
+  .btn, button {
+    width: auto; /* Anstatt fester Breite */
+    min-width: 120px; /* Mindestbreite für die Lesbarkeit */
+    padding: 8px 12px;
+    font-size: 14px;
+    white-space: nowrap; /* Verhindert Umbrechen des Textes */
+    display: inline-block;
+  }
+
+  /* Spezielle Anpassungen für den Header */
+  header {
+    padding: 10px;
+  }
+
+  /* Navigation vertikal ausrichten, wenn nötig */
+  nav ul {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  nav ul li {
+    margin: 5px 0;
+  }
+
+  /* Container-Padding reduzieren */
+  .container, section {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+}

@@ -1,0 +1,353 @@
+@import './../../../../../styles.scss';
+@import './../../../mixins/mixin.scss';
+
+.flex-wrapper {
+    @include dflex();
+    position: relative;
+    width: 100%;
+}
+
+.content-wrapper {
+    position: relative;
+    height: calc(100vh - 109px);
+    background-color: $darkblue;
+    @include dflex();
+    width: 100%;
+    max-width: 1920px;
+    overflow: hidden;
+}
+
+.content-container {
+    @include dflex(row, space-between, center);
+    height: calc(100vh - 200px);
+    width: 100%; 
+    position: relative;
+}
+
+.hero-left-section {
+    position: relative;
+    width: 40%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2;
+}
+
+.hero-img {
+    position: relative;
+    z-index: 2;
+    height: 90vh;
+    max-height: 700px;
+    object-fit: contain;
+    animation: float 6s ease-in-out infinite;
+}
+
+.hero-img-shadow {
+    position: absolute;
+    right: -150px;
+    bottom: -100px;
+    width: 120%;
+    height: 120%;
+    background: url('/assets/img/hero-shadows.png') no-repeat;
+    background-size: contain;
+    background-position: center;
+    z-index: 1;
+    opacity: 0.8;
+    transform: rotate(-5deg);
+}
+
+.vector-shape {
+    position: absolute;
+    bottom: -150px;
+    left: -100px;
+    width: 140%;
+    height: 850px;
+    z-index: 1;
+    transform: rotate(-8deg);
+}
+
+.text-container-wrapper {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    width: 60%;
+    z-index: 3;
+    padding-left: 2rem;
+}
+
+.text-container {
+    width: 100%;
+    z-index: 5;
+    margin-right: 100px;
+}
+
+.introduce-text {
+    @include dflex(row, flex-start, center);
+    margin-bottom: 2rem;
+}
+
+.rotated-text-right {
+    display: inline-block;
+    transform: rotate(-90deg);
+    font-size: 60px;
+    color: white;
+    text-wrap: nowrap;
+    margin-right: 2rem;
+}
+
+.name {
+    margin: 0;
+    line-height: 1;
+    font-size: 64px;
+    color: white;
+}
+
+.profession {
+    color: $purple;
+    font-size: 58px;
+    margin: 0;
+    line-height: 1;
+}
+
+.button-wrapper {
+    width: 100%;
+    height: 62px;
+    margin-top: 30px;
+    @include dflex(row, flex-start, center);
+}
+
+.button {
+    @include dflex(row, center, center);
+    width: 165px;
+    height: 58px;
+    border-radius: 10px;
+    padding: 15px 30px;
+    background-color: $green;
+    color: white;
+    font-size: 23px;
+    z-index: 3;
+    transition: all 0.3s ease;
+
+    &:hover {
+        transform: scale(1.05);
+        background-color: $purple;
+    }
+}
+
+.rotated-text-left {
+    display: inline-block;
+    transform: rotate(90deg);
+    color: white;
+    font-size: 20px;
+    transition: color 0.3s ease;
+
+    &:hover {
+        color: $green;
+    }
+}
+
+.hero-footer-container {
+    @include dflex(row, space-between, center);
+    position: absolute;
+    bottom: 0;
+    z-index: 10;
+    width: 100%;
+    height: 100px;
+    color: white;
+    padding: 0 100px;
+}
+
+.line-wrapper {
+    position: relative;
+    width: 100px;
+}
+
+.decoration-line {
+    position: absolute;
+    right: 0;
+    width: 99999px;
+    height: 4px;
+    background-color: $purple;
+}
+
+.socials {
+    @include dflex(row, flex-start, center);
+    gap: 20px;
+    z-index: 10;
+
+    > a, > img {
+        transition: filter 0.3s ease;
+        
+        &:hover {
+            filter: brightness(0) saturate(100%) invert(76%) sepia(15%) saturate(4614%) hue-rotate(71deg) brightness(102%) contrast(101%);
+        }
+    }
+}
+
+.email-adress {
+    margin-left: 15px;
+    font-size: 23px;
+    cursor: pointer;
+
+    &:hover {
+        color: $green !important;
+    }
+}
+
+.copy-alert {
+    position: fixed;
+    bottom: -3000px;
+    left: 50%;
+    border-radius: 10px;
+    background-color: black;
+    opacity: 0.3;
+    z-index: 999;
+    padding: 10px;
+    color: white;
+    transform: translate(-50%);
+    transition: all 0.2s ease-in-out, transform 0.4s ease-in-out 0.4s;
+}
+
+.copy-alert.slide-in {
+    bottom: 50px;
+}
+
+.copy-alert.slide-out {
+    bottom: -3000px;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-20px); }
+}
+
+/* Responsive styles */
+@media (max-width: 1100px) {
+    .content-container {
+        @include dflex(column);
+        justify-content: flex-end;
+        align-items: flex-end;
+    }
+
+    .text-container {
+        width: 100%;
+        margin-top: 30px;
+        margin-right: 0;
+        z-index: 15;
+    }
+
+    .vector-shape {
+        display: block;
+    }
+
+    .introduce-text {
+        @include dflex(row, center, center);
+        width: 100%;
+    }
+
+    .button-wrapper {
+        @include dflex(row, center, center);
+        margin-left: 0px;
+    }
+
+    .button {
+        margin-left: 0;
+    }
+
+    .hero-img {
+        height: 60vh;
+        bottom: 200px;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+
+    .hero-img-shadow {
+        height: 70vh;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+
+    .hero-left-section {
+        width: 100%;
+    }
+
+    .text-container-wrapper {
+        width: 100%;
+    }
+
+    .socials {
+        @include dflex(row, center);
+        width: auto;
+        margin-right: 20vw;
+
+        >img {
+            margin-right: 13px;
+        }
+
+        >a {
+            margin-left: 15px;
+            margin-right: 15px;
+        }
+    }
+
+    .decoration-line {
+        width: 100%;
+        margin-right: 0;
+    }
+
+    .hero-footer-container {
+        height: auto;
+    }
+
+    .scroll-down {
+        display: block;
+    }
+
+    .email-adress {
+        display: none;
+    }
+}
+
+@media (max-width: 760px) {
+    .scroll-down {
+        display: none;
+    }
+
+    .introduce-text {
+        width: auto;
+    }
+
+    .rotated-text-right {
+        font-size: 24px;
+    }
+
+    .name {
+        font-size: 48px;
+    }
+
+    .profession {
+        font-size: 28px;
+    }
+
+    .content-container {
+        overflow: hidden;
+    }
+}
+
+@media (max-width: 432px) {
+    .rotated-text-right {
+        max-width: 50px;
+    }
+}
+
+@media (max-width: 375px) {
+    .name {
+        font-size: 38px;
+    }
+
+    .profession {
+        font-size: 25px;
+    }
+}

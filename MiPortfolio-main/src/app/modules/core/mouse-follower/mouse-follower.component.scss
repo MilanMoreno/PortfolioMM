@@ -1,0 +1,19 @@
+@import './../../../../styles.scss';
+@import './../../mixins/mixin.scss';
+
+html {
+  cursor: none;
+  background: #F1FFFA;
+}
+
+.mouse-pointer {
+  width: 0;
+  height: 0;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-bottom: 20px solid white;
+  position: absolute;
+  transform: translate(-50%, -50%);
+  transform: rotate(-30deg);
+  z-index: 999;
+}

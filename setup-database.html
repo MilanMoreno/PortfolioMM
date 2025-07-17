@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup Database - Portfolio Contact Form</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .step {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-left: 4px solid #4CAF50;
+        }
+        .sql-code {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        .button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        .button:hover {
+            background: #45a049;
+        }
+        .copy-button {
+            background: #2196F3;
+        }
+        .copy-button:hover {
+            background: #1976D2;
+        }
+        .success {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        .warning {
+            color: #ff9800;
+            font-weight: bold;
+        }
+        .error {
+            color: #f44336;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗄️ Setup Database for Portfolio Contact Form</h1>
+        
+        <div class="step">
+            <h3>📋 Step 1: Copy the SQL Script</h3>
+            <p>Click the button below to copy the SQL script to your clipboard:</p>
+            <button class="button copy-button" onclick="copySQL()">📋 Copy SQL Script</button>
+            <span id="copyStatus"></span>
+        </div>
+
+        <div class="step">
+            <h3>🌐 Step 2: Open Supabase Dashboard</h3>
+            <p>1. Go to <a href="https://supabase.com/dashboard/projects" target="_blank">Supabase Dashboard</a></p>
+            <p>2. Select your project: <strong>"MilanMoreno's Project"</strong></p>
+            <p>3. Click on <strong>"SQL Editor"</strong> in the left sidebar</p>
+        </div>
+
+        <div class="step">
+            <h3>⚡ Step 3: Run the SQL Script</h3>
+            <p>1. Paste the copied SQL script into the SQL Editor</p>
+            <p>2. Click the <strong>"Run"</strong> button</p>
+            <p>3. You should see a success message and the table structure</p>
+        </div>
+
+        <div class="step">
+            <h3>✅ Step 4: Test Your Contact Form</h3>
+            <p>After running the SQL script, go back to your portfolio website and try submitting the contact form. It should now work!</p>
+        </div>
+
+        <h2>📝 SQL Script Preview:</h2>
+        <div class="sql-code" id="sqlScript">-- Create the contact_requests table for the portfolio contact form
+-- Run this SQL in your Supabase SQL Editor
+
+-- Create the contact_requests table if it doesn't exist
+CREATE TABLE IF NOT EXISTS contact_requests (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  email text NOT NULL,
+  message text NOT NULL,
+  subject text,
+  processed boolean DEFAULT false,
+  email_sent boolean DEFAULT false,
+  created_at timestamptz DEFAULT now()
+);
+
+-- Enable Row Level Security
+ALTER TABLE contact_requests ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Allow public inserts to contact_requests" ON contact_requests;
+DROP POLICY IF EXISTS "Allow service role to read all contact_requests" ON contact_requests;
+DROP POLICY IF EXISTS "Allow service role to update contact_requests" ON contact_requests;
+
+-- Create policy to allow public inserts (no authentication required)
+CREATE POLICY "Allow public inserts to contact_requests"
+  ON contact_requests
+  FOR INSERT
+  TO public
+  WITH CHECK (true);
+
+-- Create policy to allow service role to read all data
+CREATE POLICY "Allow service role to read all contact_requests"
+  ON contact_requests
+  FOR SELECT
+  TO service_role
+  USING (true);
+
+-- Create policy to allow service role to update all data
+CREATE POLICY "Allow service role to update contact_requests"
+  ON contact_requests
+  FOR UPDATE
+  TO service_role
+  USING (true)
+  WITH CHECK (true);
+
+-- Grant necessary permissions
+GRANT INSERT ON contact_requests TO anon;
+GRANT SELECT ON contact_requests TO service_role;
+GRANT UPDATE ON contact_requests TO service_role;
+
+-- Verify the table was created
+SELECT 
+  table_name, 
+  column_name, 
+  data_type, 
+  is_nullable
+FROM information_schema.columns 
+WHERE table_name = 'contact_requests'
+ORDER BY ordinal_position;</div>
+
+        <div class="step">
+            <h3>🔍 Troubleshooting</h3>
+            <p><strong>If you get permission errors:</strong></p>
+            <ul>
+                <li>Make sure you're logged into the correct Supabase account</li>
+                <li>Verify you have admin access to the project</li>
+            </ul>
+            
+            <p><strong>If the table already exists:</strong></p>
+            <ul>
+                <li>The script will not overwrite existing data</li>
+                <li>It will only add missing policies and permissions</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        function copySQL() {
+            const sqlText = document.getElementById('sqlScript').textContent;
+            navigator.clipboard.writeText(sqlText).then(function() {
+                const status = document.getElementById('copyStatus');
+                status.innerHTML = '<span class="success">✅ SQL script copied to clipboard!</span>';
+                setTimeout(() => {
+                    status.innerHTML = '';
+                }, 3000);
+            }, function(err) {
+                const status = document.getElementById('copyStatus');
+                status.innerHTML = '<span class="error">❌ Failed to copy. Please select and copy manually.</span>';
+            });
+        }
+    </script>
+</body>
+</html>
