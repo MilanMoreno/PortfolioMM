@@ -59,7 +59,13 @@ interface Skill {
       min-height: 100vh;
       background-color: var(--color-background-primary);
     }
-
+.skills__title-line {
+  width: 9999px;
+  height: 4px;
+  background-color: var(--color-accent-secondary);
+  margin-left: 3rem;
+  display: inline-block;}
+  
     .skills__container {
       display: flex;
       justify-content: space-between;
@@ -201,7 +207,11 @@ interface Skill {
         grid-template-columns: repeat(3, 1fr);
       }
     }
-
+       @media (max-width: 1000px) {
+.skills__title-line {
+  width: 9999px;
+    }
+   
     @media (max-width: 890px) {
       .skills__container {
         flex-direction: column-reverse;
@@ -218,6 +228,10 @@ interface Skill {
         display: flex;
         justify-content: center;
       }
+
+
+
+
 
       .skills__title::after {
         display: none; /* Linie auf Tablet verstecken */

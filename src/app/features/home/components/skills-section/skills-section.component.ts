@@ -28,9 +28,10 @@ interface Skill {
           
           <!-- Text SECOND (RIGHT SIDE) -->
           <div class="skills__text">
-            <h2 class="skills__title" [@fadeInUp]="isVisible ? 'visible' : 'void'">
-              {{ "SKILLS.MY_SKILLS" | translate }}
-            </h2>
+            <div class="skills__title-container" [@fadeInUp]="isVisible ? 'visible' : 'void'">
+              <h2 class="skills__title">{{ "SKILLS.MY_SKILLS" | translate }}</h2>
+              <div class="skills__title-line"></div>
+            </div>
             
             <p class="skills__description">
               {{ "SKILLS.DESCRIPTION" | translate }}
@@ -143,20 +144,21 @@ interface Skill {
       font-size: 3.5rem;
       color: var(--color-text-primary);
       margin: 0 0 2rem 0;
-      position: relative;
       display: inline-block;
     }
     
-    .skills__title::after {
-      content: '';
-      position: absolute;
-      bottom: 50%;
-      left: 100%;
-      transform: translateY(50%);
+    .skills__title-container {
+      display: flex;
+      align-items: center;
+      margin-bottom: 2rem;
+    }
+    
+    .skills__title-line {
       width: 80px;
       height: 4px;
-      background-color: var(--color-accent-primary);
+      background-color: var(--color-accent-secondary);
       margin-left: 1rem;
+      display: inline-block;
     }
     
     .skills__description {
@@ -235,7 +237,7 @@ interface Skill {
     @media (max-width: 1000px) {
       .skills__content {
         flex-direction: column;
-        text-align: center;
+        align-items: center;
       }
       
       .skills__text {
@@ -250,16 +252,14 @@ interface Skill {
         margin-bottom: 3rem;
       }
       
-      .skills__title {
+      .skills__title-container {
         text-align: center;
-        margin-bottom: 3rem;
+        justify-content: center;
       }
       
-      .skills__title::after {
-        bottom: -10px;
-        left: 50%;
-        transform: translateX(-50%);
-        margin-left: 0;
+      .skills__title {
+        text-align: center;
+        margin-bottom: 0;
       }
       
       .skills__description {
