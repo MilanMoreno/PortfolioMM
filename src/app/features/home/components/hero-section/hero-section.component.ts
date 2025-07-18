@@ -9,9 +9,6 @@ import { fadeInLeft, fadeInUp } from '../../../../shared/animations/fade.animati
     imports: [CommonModule, TranslateModule],
     template: `
 <section class="hero" id="hero">
-
-
-
   <div class="hero__content">
     <div class="hero__left-container">
       <img class="hero__image" src="assets/img/hero.png" alt="Hero image">
@@ -93,13 +90,13 @@ import { fadeInLeft, fadeInUp } from '../../../../shared/animations/fade.animati
       align-items: center;
       flex: 1;
       width: 100%;
-    padding: 20px 50px;
+      margin-right: 40px;
+      padding: 20px 50px;
       margin-top: calc(-1 * var(--header-height));
       position: relative;
       z-index: 3;
-      gap: 2rem;
+      gap: 5rem;
     }
-
 
     .hero__left-container {
       position: relative;
@@ -113,7 +110,7 @@ import { fadeInLeft, fadeInUp } from '../../../../shared/animations/fade.animati
     }
 
     .hero__image {
-      height: 580px;
+      height: 550px;
       object-fit: contain;
       position: relative;
       z-index: 3;
@@ -193,29 +190,28 @@ import { fadeInLeft, fadeInUp } from '../../../../shared/animations/fade.animati
     }
 
     .hero__name-container {
-  display: flex;
-  flex-direction: column;
-  row-gap: 5px;  /* Platz zwischen Name, Jobtitle & CTA */
-  align-items: flex-start; /* Default für mobil */
-}
+      display: flex;
+      flex-direction: column;
+      row-gap: 5px;
+      align-items: flex-start;
+    }
 
-/* weil row-gap den Job schon erledigt, kann die Extra-Margin weg */
-.hero__cta-wrapper {  
-  margin-top: 0;   
-}
+    .hero__cta-wrapper {  
+      margin-top: 0;   
+    }
 
-/* Desktop: Button zentrieren oberhalb 900px */
-@media (min-width: 901px) {
-  .hero__name-container {
-    align-items: center; /* Zentriert alles inklusive Button */
-  }
-  
-  .hero__cta-wrapper {
-    display: flex;
-    justify-content: center;
-    width: 100%;
-  }
-}
+    /* Desktop: Button zentrieren oberhalb 900px */
+    @media (min-width: 901px) {
+      .hero__name-container {
+        align-items: center;
+      }
+      
+      .hero__cta-wrapper {
+        display: flex;
+        justify-content: center;
+        width: 100%;
+      }
+    }
 
     .hero__name {
       margin: 0;
@@ -238,8 +234,6 @@ import { fadeInLeft, fadeInUp } from '../../../../shared/animations/fade.animati
       overflow: hidden;
       text-overflow: ellipsis;
     }
-
-   
 
     .hero__cta {
       display: inline-flex;
@@ -269,7 +263,7 @@ import { fadeInLeft, fadeInUp } from '../../../../shared/animations/fade.animati
       align-items: center;
       width: 100%;
       height: 100px;
-      padding-bottom:100px;
+      padding-bottom: 100px;
       z-index: 20;
       margin-top: auto;
       position: relative;
@@ -317,7 +311,7 @@ import { fadeInLeft, fadeInUp } from '../../../../shared/animations/fade.animati
     .hero__scroll {
       transform: rotate(90deg);
       color: var(--color-text-primary);
-      font-size: 20px;
+      font-size: 16px;
       transition: color 0.3s ease;
     }
 
@@ -344,15 +338,16 @@ import { fadeInLeft, fadeInUp } from '../../../../shared/animations/fade.animati
 
     @media (max-width: 1300px) {
       .hero__content {
-       padding: 0px 0px;
+        padding-right: 20px;
       }
-
+      
       .hero__footer {
         padding: 0 50px;
       }
 
       .hero__image {
-        height: 580px;
+        height: 571px;
+        padding-top: 5px;
       }
 
       .hero__name {
@@ -416,7 +411,7 @@ import { fadeInLeft, fadeInUp } from '../../../../shared/animations/fade.animati
         display: flex;
         position: absolute !important;
         bottom: -50px !important;
-        left: -130px !important; /* Mehr nach links verschoben */
+        left: -130px !important;
         width: 100% !important;
         z-index: 10 !important;
       }
@@ -428,6 +423,7 @@ import { fadeInLeft, fadeInUp } from '../../../../shared/animations/fade.animati
         position: relative;
         display: flex;
         flex-direction: column;
+        padding-top: 40px;
       }
 
       .hero__name { 
@@ -452,7 +448,7 @@ import { fadeInLeft, fadeInUp } from '../../../../shared/animations/fade.animati
         flex-direction: column;
         padding: 0px;
         gap: 0rem; 
-        margin-top: 0px;
+        margin-top: 2px;
         flex: 1;
         justify-content: center;
         align-items: center;
@@ -534,25 +530,25 @@ import { fadeInLeft, fadeInUp } from '../../../../shared/animations/fade.animati
     /* Spezielle Anpassung für Bereich 601px bis 900px */
     @media (max-width: 900px) and (min-width: 601px) {
       .hero__content {
-        justify-content: flex-start; /* Content nach oben */
-        padding-top: 0px; /* Mehr Abstand von oben */
-        gap: 0rem; /* Kleinerer Gap */
+        justify-content: flex-start;
+        padding-top: 0px;
+        gap: 0rem;
       }
 
       .hero__image {
-        height: 400px; 
+        height: 380px; 
       }
 
       .hero__name {
-        font-size: 48px; /* Kleinerer Name */
+        font-size: 48px;
       }
 
       .hero__title {
-        font-size: 24px; /* Kleinerer Title */
+        font-size: 28px;
       }
 
       .hero__intro-text {
-        font-size: 20px; /* Kleinerer Intro Text */
+        font-size: 20px;
       }
     }
 
@@ -576,9 +572,9 @@ import { fadeInLeft, fadeInUp } from '../../../../shared/animations/fade.animati
       .hero__mobile-vector {
         width: 220%;
         max-width: none;
-        height: 120px;
+        height: 80px;
         bottom: -50px;
-        left: -60%; /* Etwas mehr nach links */
+        left: -60%;
         transform: translate(0, 0) rotate(3deg);
       }
     }
@@ -617,7 +613,7 @@ import { fadeInLeft, fadeInUp } from '../../../../shared/animations/fade.animati
         max-width: none;
         height: 80px;
         bottom: -40px;
-        left: -75%; /* Mehr nach links verschoben */
+        left: -75%;
         transform: translate(20%, 0) rotate(4deg);
       }
     }
@@ -680,7 +676,7 @@ import { fadeInLeft, fadeInUp } from '../../../../shared/animations/fade.animati
         max-width: none;
         height: 70px;
         bottom: -30px;
-        left: -95%; /* Noch mehr nach links für kleinste Screens */
+        left: -95%;
         transform: translate(25%, 0) rotate(5deg);
       }
     }

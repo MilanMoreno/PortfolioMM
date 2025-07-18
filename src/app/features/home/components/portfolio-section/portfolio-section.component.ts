@@ -166,13 +166,13 @@ import { TranslateModule } from '@ngx-translate/core';
       }
       
       .portfolio__line-left {
-        width: 30%;
+        width: 5%;
         order: 0;
         margin-right: 0;
       }
       
       .portfolio__line-right-container {
-        width: 30%;
+        width: 3%;
         order: 2;
         margin-left: 0;
       }
@@ -193,7 +193,7 @@ import { TranslateModule } from '@ngx-translate/core';
     
     @media (max-width: 480px) {
       .portfolio__title {
-        font-size: 36px;
+        font-size: 44px;
       }
       
       .portfolio__shadow-purple,

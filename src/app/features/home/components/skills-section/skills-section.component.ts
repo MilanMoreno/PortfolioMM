@@ -150,15 +150,27 @@ interface Skill {
     .skills__title-container {
       display: flex;
       align-items: center;
+        text-align: center;
+        justify-content: flex-end;
       margin-bottom: 2rem;
     }
     
     .skills__title-line {
-      width: 80px;
+      width: 2px;
       height: 4px;
-      background-color: var(--color-accent-secondary);
+      position: relative;
       margin-left: 1rem;
       display: inline-block;
+    }
+    
+    .skills__title-line::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 9999px;
+      height: 4px;
+      background-color: var(--color-accent-secondary);
     }
     
     .skills__description {
@@ -254,7 +266,8 @@ interface Skill {
       
       .skills__title-container {
         text-align: center;
-        justify-content: center;
+        justify-content: flex-end;
+    
       }
       
       .skills__title {
@@ -284,7 +297,7 @@ interface Skill {
       }
       
       .skills__title {
-        font-size: 2.5rem;
+        font-size: 45px;
       }
       
       .skills__description {
@@ -305,7 +318,7 @@ interface Skill {
       }
       
       .skills__title {
-        font-size: 2rem;
+        font-size: 45px;
       }
       
       .skills__icon {
@@ -316,7 +329,7 @@ interface Skill {
     
     @media (max-width: 480px) {
       .skills__title {
-        font-size: 1.75rem;
+        font-size:45px;
       }
       
       .skills__description {

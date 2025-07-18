@@ -184,11 +184,11 @@ interface ContactFormData {
     }
 
     .contact__line {
-      background-color: var(--color-accent-secondary);
-      width: 20vw;
-      height: 4px;
-      margin-right: 2rem;
-    }
+  background-color: var(--color-accent-secondary);background-color: var(--color-accent-secondary);
+  width: 50px;
+  height: 4px;
+  margin-right: 2rem;
+}
 
     .contact__title {
       font-size: var(--font-size-heading-large);

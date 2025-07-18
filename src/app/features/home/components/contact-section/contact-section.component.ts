@@ -195,7 +195,7 @@ interface ContactFormData {
 
     .contact__line {
       background-color: var(--color-accent-secondary);
-      width: 20vw;
+      width: 20px;
       height: 4px;
       margin-right: 2rem;
     }
@@ -451,7 +451,7 @@ interface ContactFormData {
       }
 
       .contact__title {
-        font-size: 32px;
+        font-size: 44px;
       }
 
       .contact__subtitle {
@@ -488,7 +488,7 @@ interface ContactFormData {
       }
       
       .contact__title {
-        font-size: 26px;
+        font-size: 35px;
       }
       
       .contact__subtitle {
@@ -503,7 +503,7 @@ interface ContactFormData {
     
     @media (max-width: 350px) {
       .contact__title {
-        font-size: 22px;
+        font-size: 25px;
       }
       
       .contact__subtitle {

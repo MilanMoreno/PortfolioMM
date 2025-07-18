@@ -214,7 +214,7 @@ import { fadeInLeft, fadeInUp } from '../../../../shared/animations/fade.animati
 
     @media (max-width: 480px) {
       .about__heading {
-        font-size: 32px;
+        font-size: 44x;
         
       }
 

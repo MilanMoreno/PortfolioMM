@@ -172,7 +172,7 @@ import { fadeInLeft, fadeInUp } from '../../../../shared/animations/fade.animati
     }
 
     .hero__image {
-      height: 75vh;
+      height: 650px;
       object-fit: contain;
       animation: float 6s ease-in-out infinite;
     }
