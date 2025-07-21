@@ -141,7 +141,7 @@ interface Skill {
     }
     
     .skills__title {
-      font-size: 3.5rem;
+      font-size: 89px;
       color: var(--color-text-primary);
       margin: 0 0 2rem 0;
       display: inline-block;
@@ -238,7 +238,7 @@ interface Skill {
     
     @media (max-width: 1200px) {
       .skills__title {
-        font-size: 3rem;
+        font-size: 60px;
       }
       
       .skills__grid {

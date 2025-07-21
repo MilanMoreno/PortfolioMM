@@ -531,7 +531,7 @@ import { fadeInLeft, fadeInUp } from '../../../../shared/animations/fade.animati
     @media (max-width: 900px) and (min-width: 601px) {
       .hero__content {
         justify-content: flex-start;
-        padding-top: 0px;
+      padding-top: 25px;
         gap: 0rem;
       }
 
