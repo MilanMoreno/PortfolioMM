@@ -279,7 +279,8 @@ import { TranslateModule } from '@ngx-translate/core';
       }
       
       .project__description {
-        font-size: 0.8rem;
+        font-size: 16px;
+
       }
     }
   `]

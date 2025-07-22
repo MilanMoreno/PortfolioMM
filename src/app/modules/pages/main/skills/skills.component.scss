@@ -5,12 +5,15 @@
     @include dflex();
     width: 100%;
     position: relative;
+   padding-top: 4rem;
 }
 
 .content-container {
     @include dflex(row, space-between);
     position: relative;
-    height: 100vh;
+    min-height: 600px;
+    height: auto;
+   padding: 3rem 0 4rem 0;
     background-color: $darkblue;
     padding-left: 20%;
     padding-right: 20%;

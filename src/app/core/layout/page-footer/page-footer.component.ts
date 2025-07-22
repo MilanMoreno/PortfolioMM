@@ -214,7 +214,7 @@ import { ClipboardManagerService } from '../../../shared/services/clipboard/clip
       
       .footer__legal-link,
       .footer__copyright {
-        font-size: 0.875rem;
+        font-size: 16px;
       }
       
       .footer__social-icon {

@@ -67,8 +67,9 @@ import { fadeInLeft, fadeInUp } from '../../../../shared/animations/fade.animati
       justify-content: center;
       width: 100%;
       background-color: var(--color-background-primary);
-      min-height: 100vh;
-      padding: 0rem ;
+      min-height: 600px;
+      height: auto;
+     padding: 4rem 0;
       overflow: visible;
     }
 
@@ -98,7 +99,7 @@ import { fadeInLeft, fadeInUp } from '../../../../shared/animations/fade.animati
 
     .about__heading {
       font-size: 89px;
-       padding-top: 100px !important;
+       padding-top: 0px !important;
       color: var(--color-text-primary);
       margin-bottom: 2rem;
     }
@@ -209,12 +210,12 @@ import { fadeInLeft, fadeInUp } from '../../../../shared/animations/fade.animati
 
       .about__image-line {
         display: none;
-      }
+      } 
     }
 
     @media (max-width: 480px) {
       .about__heading {
-        font-size: 39x;
+        font-size: 26px;
         
       }
 

@@ -9,7 +9,8 @@
 
 .content-wrapper {
     position: relative;
-    height: calc(100vh - 109px);
+    height: 800px;
+    max-height: 800px;
     background-color: $darkblue;
     @include dflex();
     width: 100%;
@@ -19,7 +20,7 @@
 
 .content-container {
     @include dflex(row, space-between, center);
-    height: calc(100vh - 200px);
+    height: 100%;
     width: 100%; 
     position: relative;
 }

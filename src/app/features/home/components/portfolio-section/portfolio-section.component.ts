@@ -52,9 +52,10 @@ import { TranslateModule } from '@ngx-translate/core';
       position: relative;
       display: flex;
       justify-content: center;
-      padding: 4rem 0;
+      padding: 2rem 0;
       background-color: var(--color-background-primary);
-      min-height: auto;
+      min-height: 600px;
+      height: auto;
     }
     
     .portfolio__container {
@@ -172,7 +173,7 @@ import { TranslateModule } from '@ngx-translate/core';
       }
       
       .portfolio__line-right-container {
-        width: 3%;
+        width: 1%;
         order: 2;
         margin-left: 0;
       }
@@ -193,7 +194,7 @@ import { TranslateModule } from '@ngx-translate/core';
     
     @media (max-width: 480px) {
       .portfolio__title {
-        font-size: 44px;
+        font-size: 26px;
       }
       
       .portfolio__shadow-purple,

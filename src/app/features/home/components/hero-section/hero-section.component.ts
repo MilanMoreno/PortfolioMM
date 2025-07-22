@@ -74,13 +74,14 @@ import { fadeInLeft, fadeInUp } from '../../../../shared/animations/fade.animati
     styles: [`
     .hero {
       position: relative;
-      height: 100vh;
-      min-height: 700px;
+      height: 800px;
+      max-height: 800px;
       background-color: #141D2F;
       display: flex;
       flex-direction: column;
       overflow: visible;
       padding-top: var(--header-height);
+      padding-bottom: 0;
       box-sizing: border-box;
     }
 
@@ -620,11 +621,11 @@ import { fadeInLeft, fadeInUp } from '../../../../shared/animations/fade.animati
 
     @media (max-width: 350px) {
       .hero__name {
-        font-size: 28px;
+        font-size: 33px;
       }
 
       .hero__title {
-        font-size: 24px;
+        font-size: 20px;
       }
 
       .hero__intro-text {
@@ -646,7 +647,7 @@ import { fadeInLeft, fadeInUp } from '../../../../shared/animations/fade.animati
 
     @media (max-width: 300px) {
       .hero__name {
-        font-size: 24px;
+        font-size: 32px;
       }
 
       .hero__title {

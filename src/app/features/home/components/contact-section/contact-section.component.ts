@@ -174,7 +174,9 @@ interface ContactFormData {
       flex-direction: column;
       align-items: center;
       background-color: var(--color-background-primary);
-      min-height: 100vh;
+      min-height: 600px;
+      height: auto;
+      padding: 2rem 0;
       width: 100%;
       max-width: 1920px;
     }
@@ -223,7 +225,7 @@ interface ContactFormData {
       z-index: 60;
 
       p {
-        font-size: var(--font-size-base);
+        font-size: 16px;
         color: var(--color-text-primary);
       }
     }
@@ -298,11 +300,12 @@ interface ContactFormData {
     }
 
     .contact__checkbox-custom {
-      width: 20px;
-      height: 20px;
-      border: 2px solid var(--color-accent-secondary);
-      border-radius: 4px;
-      position: relative;
+    
+  width: 30px;
+  height: 24px;
+  border: 4px solid var(--color-accent-secondary);
+  border-radius: 0px;
+  position: relative;
 
       &::after {
         content: '';
@@ -327,7 +330,7 @@ interface ContactFormData {
     }
 
     .contact__checkbox-text {
-      font-size: 15px;
+      font-size: 16px;
 
       a {
         color: var(--color-accent-secondary);
@@ -396,8 +399,8 @@ interface ContactFormData {
 
     .contact__scroll-top {
       position: absolute;
-      right: 20px;
-      bottom: 20px;
+      right: 28px;
+      bottom: 28px;
       height: 30px;
       width: 30px;
       color: var(--color-text-primary);
@@ -427,6 +430,7 @@ interface ContactFormData {
         width: 100%;
         max-width: 80vw;
         text-align: center;
+        font-size: 16px;
       }
 
       .contact__form {
@@ -446,8 +450,8 @@ interface ContactFormData {
       .contact__scroll-top {
         right: 10px;
         bottom: 10px;
-        height: 25px;
-        width: 25px;
+        height: 27px;
+        width: 27px;
       }
 
       .contact__title {
@@ -466,20 +470,20 @@ interface ContactFormData {
 
     @media (max-width: 480px) {
       .contact__checkbox-text {
-        font-size: 9px;
+        font-size: 15px;
       }
 
       .contact__submit {
-        width: 120px;
-        padding: 8px 12px;
-        font-size: 11px;
+        width: 170px;
+        padding: 12px 12px;
+        font-size: 16px;
       }
 
       .contact__scroll-top {
         right: 10px;
         bottom: 10px;
-        height: 20px;
-        width: 20px;
+        height: 26px;
+        width: 26px;
       }
 
       .contact__shadow {
@@ -488,7 +492,7 @@ interface ContactFormData {
       }
       
       .contact__title {
-        font-size: 35px;
+        font-size: 26px;
       }
       
       .contact__subtitle {
@@ -496,68 +500,74 @@ interface ContactFormData {
       }
       
       input, textarea {
-        font-size: 14px;
+        font-size: 16px;
         padding: 10px 15px;
       }
     }
     
     @media (max-width: 350px) {
       .contact__title {
-        font-size: 25px;
+        font-size: 26px;
       }
       
       .contact__subtitle {
-        font-size: 14px;
+        font-size: 16px;
       }
       
       .contact__submit {
-        width: 100px;
-        padding: 6px 10px;
-        font-size: 10px;
+        width: 170px;
+        padding: 12px 12px;
+        font-size: 16px;
       }
       
       .contact__checkbox-text {
-        font-size: 8px;
+        font-size: 14px;
       }
-      
+      .contact__checkbox-custom{
+  width: 50px;
+  height: 24px;
+  border: 4px solid var(--color-accent-secondary);
+  border-radius: 0px;
+  position: relative;
+}
       input, textarea {
-        font-size: 11px;
+        font-size: 16px;
         padding: 8px 10px;
       }
       
       .contact__scroll-top {
-        height: 16px;
-        width: 16px;
+        height: 26px;
+        width: 26px;
       }
     }
    
    @media (max-width: 320px) {
      .contact__title {
-       font-size: 20px;
+       font-size: 26px;
      }
      
      .contact__subtitle {
-       font-size: 13px;
+       font-size: 16px;
      }
      
      .contact__submit {
-       width: 90px;
-       padding: 5px 8px;
-       font-size: 9px;
+       width: 170px;
+       padding: 12px 12px;
+       font-size: 16px;
      }
      
      .contact__checkbox-text {
-       font-size: 7px;
+       font-size: 14px;
      }
      
      input, textarea {
-       font-size: 10px;
+       font-size: 16px;
        padding: 6px 8px;
      }
      
      .contact__scroll-top {
-       height: 14px;
-       width: 14px;
+       height: 22px;
+       width: 22px;
        bottom: 8px;
        right: 8px;
      }

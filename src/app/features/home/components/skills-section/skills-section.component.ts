@@ -63,9 +63,10 @@ interface Skill {
     .skills {
       position: relative;
       width: 100%;
-      min-height: 100vh;
+      min-height: 600px;
+      height: auto;
       background-color: var(--color-background-primary);
-      padding: 6rem 0;
+     padding: 4rem 0;
       overflow: hidden;
     }
     
@@ -329,7 +330,7 @@ interface Skill {
     
     @media (max-width: 480px) {
       .skills__title {
-        font-size:45px;
+        font-size:26px;
       }
       
       .skills__description {

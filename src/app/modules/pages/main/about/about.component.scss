@@ -6,6 +6,7 @@
     @include dflex();
     width: 100%;
     background-color: rgb(25, 35, 55);
+   padding-top: 4rem;
 }
 
 .content-wrapper {
@@ -18,7 +19,9 @@
 .content-container {
     @include dflex(row, space-between);
     position: relative;
-    height: 100vh;
+    min-height: 600px;
+    height: auto;
+   padding: 3rem 0 4rem 0;
     z-index: 4;
     width: 100%;
     margin-left: 15%;
