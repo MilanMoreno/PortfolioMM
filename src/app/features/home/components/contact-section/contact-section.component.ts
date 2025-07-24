@@ -176,7 +176,7 @@ interface ContactFormData {
       background-color: var(--color-background-primary);
       min-height: 600px;
       height: auto;
-      padding: 2rem 0;
+      padding: 3rem 0;
       width: 100%;
       max-width: 1920px;
     }

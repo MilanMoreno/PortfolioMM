@@ -10,9 +10,9 @@ interface Skill {
 }
 
 @Component({
-  selector: 'app-skills-section',
-  imports: [CommonModule, TranslateModule],
-  template: `
+    selector: 'app-skills-section',
+    imports: [CommonModule, TranslateModule],
+    template: `
     <section class="skills" id="skills">
       <div class="skills__container">
         <div class="skills__content">
@@ -39,9 +39,7 @@ interface Skill {
             
             <!-- Desktop Button -->
             <div class="skills__cta skills__cta--desktop">
-              <a href="#portfolio"
-                 class="skills__button"
-                 (click)="scrollToPortfolio($event)">
+              <a href="#contact" class="skills__button">
                 {{ "SKILLS.GET_IN_TOUCH" | translate }}
               </a>
             </div>
@@ -50,9 +48,7 @@ interface Skill {
         
         <!-- Mobile Button - ganz unten -->
         <div class="skills__cta skills__cta--mobile">
-          <a href="#portfolio"
-             class="skills__button"
-             (click)="scrollToPortfolio($event)">
+          <a href="#contact" class="skills__button">
             {{ "SKILLS.GET_IN_TOUCH" | translate }}
           </a>
         </div>
@@ -63,14 +59,14 @@ interface Skill {
       </div>
     </section>
   `,
-  styles: [`
+    styles: [`
     .skills {
       position: relative;
       width: 100%;
       min-height: 600px;
       height: auto;
       background-color: var(--color-background-primary);
-      padding: 4rem 0;
+     padding: 4rem 0;
       overflow: hidden;
     }
     
@@ -155,8 +151,8 @@ interface Skill {
     .skills__title-container {
       display: flex;
       align-items: center;
-      text-align: center;
-      justify-content: flex-end;
+        text-align: center;
+        justify-content: flex-end;
       margin-bottom: 2rem;
     }
     
@@ -272,6 +268,7 @@ interface Skill {
       .skills__title-container {
         text-align: center;
         justify-content: flex-end;
+    
       }
       
       .skills__title {
@@ -356,7 +353,7 @@ interface Skill {
       }
     }
   `],
-  animations: [fadeInLeft, fadeInUp]
+    animations: [fadeInLeft, fadeInUp]
 })
 export class SkillsSectionComponent implements OnInit {
   isVisible = false;
@@ -383,18 +380,5 @@ export class SkillsSectionComponent implements OnInit {
     this.viewportObserver
       .observeElement(this.elementRef.nativeElement)
       .subscribe(visible => this.isVisible = visible);
-  }
-
-  /** Scrollt zum #portfolio‑Anker, aber 10 px höher (Offset) */
-  scrollToPortfolio(event: Event): void {
-    event.preventDefault();                             // Standard‑Sprung unterbinden
-    const target = document.getElementById('portfolio');
-    if (!target) { return; }
-
-    const offset = 10;                                  // gewünschter Offset
-    const top = target.getBoundingClientRect().top
-              + window.pageYOffset - offset;
-
-    window.scrollTo({ top, behavior: 'smooth' });
   }
 }

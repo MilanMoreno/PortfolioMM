@@ -184,7 +184,7 @@ import { fadeInLeft, fadeInUp } from '../../../../shared/animations/fade.animati
 
     .hero__intro-text {
       transform: rotate(-90deg);
-      font-size: 32px;
+      font-size: 58px;
       color: var(--color-text-primary);
       white-space: nowrap;
       flex-shrink: 0;
@@ -227,7 +227,7 @@ import { fadeInLeft, fadeInUp } from '../../../../shared/animations/fade.animati
 
     .hero__title {
       color: var(--color-accent-secondary);
-      font-size: 58px;
+      font-size: 54px;
       margin: 0;
       line-height: 1.1;
       font-weight: 400;
@@ -240,8 +240,8 @@ import { fadeInLeft, fadeInUp } from '../../../../shared/animations/fade.animati
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 120px;
-      height: 40px;
+      width: 165px;
+      height: 58px;
       border-radius: 10px;
       background-color: var(--color-accent-primary);
       color: white;
@@ -662,11 +662,11 @@ import { fadeInLeft, fadeInUp } from '../../../../shared/animations/fade.animati
         height: 250px;
       }
       
-      .hero__cta {
-        width: 90px;
-        height: 32px;
-        font-size: 12px;
-      }
+     
+  .hero__cta{
+    width: 120px;
+    height: 40px;
+    font-size: 14px;}
 
       .hero__content {
         padding: 10px;
