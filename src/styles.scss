@@ -114,6 +114,10 @@ button, a, input, select, textarea,
   overflow: visible !important;
   overflow: visible;
 }
+/* 10 px früher stoppen, wenn zu #portfolio gescrollt wird */
+#portfolio {
+  scroll-margin-top: 10px;   /* = 10 px weniger nach unten */
+}
 
 .about__container {
   position: relative;
