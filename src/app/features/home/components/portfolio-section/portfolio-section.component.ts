@@ -54,7 +54,7 @@ import { TranslateModule } from '@ngx-translate/core';
       justify-content: center;
       padding: 2rem 0;
       background-color: var(--color-background-primary);
-      min-height: 600px;
+      min-height: 1000px;
       height: auto;
     }
     
