@@ -176,7 +176,7 @@ interface ContactFormData {
       background-color: var(--color-background-primary);
       min-height: 600px;
       height: auto;
-      padding: 3rem 0;
+      padding: 4rem 48px;
       width: 100%;
       max-width: 1920px;
     }
@@ -187,25 +187,38 @@ interface ContactFormData {
       width: 100%;
       margin-bottom: 4rem;
       z-index: 60;
+      position: relative;
     }
 
     .contact__title-wrapper {
       display: flex;
       align-items: center;
+      justify-content: flex-start;
       width: 100%;
+      gap: 2rem;
+      position: relative;
     }
 
     .contact__line {
       background-color: var(--color-accent-secondary);
-      width: 20px;
       height: 4px;
-      margin-right: 2rem;
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 100vw;
+      margin-left: -100vw;
+      z-index: 1;
     }
 
     .contact__title {
       font-size: var(--font-size-heading-large);
       color: var(--color-text-primary);
       margin: 0;
+      position: relative;
+      z-index: 2;
+      background-color: var(--color-background-primary);
+      padding-left: 2rem;
     }
 
     .contact__content {
@@ -300,12 +313,11 @@ interface ContactFormData {
     }
 
     .contact__checkbox-custom {
-    
-  width: 30px;
-  height: 24px;
-  border: 4px solid var(--color-accent-secondary);
-  border-radius: 0px;
-  position: relative;
+      width: 30px;
+      height: 24px;
+      border: 4px solid var(--color-accent-secondary);
+      border-radius: 0px;
+      position: relative;
 
       &::after {
         content: '';
@@ -420,18 +432,19 @@ interface ContactFormData {
       height: auto;
     }
 
+    /* Responsive Design */
     @media (max-width: 1395px) {
       .contact__content {
         flex-direction: column;
         align-items: center;
       }
 
-      .contact__intro {
+      .contact__intro { 
         width: 100%;
         max-width: 80vw;
         text-align: center;
         font-size: 16px;
-      }
+      } 
 
       .contact__form {
         width: 100%;
@@ -466,6 +479,10 @@ interface ContactFormData {
         max-width: 30%;
         opacity: 1.3;
       }
+
+      .contact__line {
+        height: 3px;
+      }
     }
 
     @media (max-width: 480px) {
@@ -493,6 +510,7 @@ interface ContactFormData {
       
       .contact__title {
         font-size: 26px;
+        padding-left: 1rem;
       }
       
       .contact__subtitle {
@@ -503,11 +521,16 @@ interface ContactFormData {
         font-size: 16px;
         padding: 10px 15px;
       }
+
+      .contact__line {
+        height: 2px;
+      }
     }
     
     @media (max-width: 350px) {
       .contact__title {
-        font-size: 26px;
+        font-size: 24px;
+        padding-left: 0.5rem;
       }
       
       .contact__subtitle {
@@ -523,13 +546,15 @@ interface ContactFormData {
       .contact__checkbox-text {
         font-size: 14px;
       }
-      .contact__checkbox-custom{
-  width: 50px;
-  height: 24px;
-  border: 4px solid var(--color-accent-secondary);
-  border-radius: 0px;
-  position: relative;
-}
+
+      .contact__checkbox-custom {
+        width: 50px;
+        height: 24px;
+        border: 4px solid var(--color-accent-secondary);
+        border-radius: 0px;
+        position: relative;
+      }
+
       input, textarea {
         font-size: 16px;
         padding: 8px 10px;
@@ -541,37 +566,38 @@ interface ContactFormData {
       }
     }
    
-   @media (max-width: 320px) {
-     .contact__title {
-       font-size: 26px;
-     }
-     
-     .contact__subtitle {
-       font-size: 16px;
-     }
-     
-     .contact__submit {
-       width: 170px;
-       padding: 12px 12px;
-       font-size: 16px;
-     }
-     
-     .contact__checkbox-text {
-       font-size: 14px;
-     }
-     
-     input, textarea {
-       font-size: 16px;
-       padding: 6px 8px;
-     }
-     
-     .contact__scroll-top {
-       height: 22px;
-       width: 22px;
-       bottom: 8px;
-       right: 8px;
-     }
-   }
+    @media (max-width: 320px) {
+      .contact__title {
+        font-size: 22px;
+        padding-left: 0.5rem;
+      }
+      
+      .contact__subtitle {
+        font-size: 14px;
+      }
+      
+      .contact__submit {
+        width: 170px;
+        padding: 12px 12px;
+        font-size: 16px;
+      }
+      
+      .contact__checkbox-text {
+        font-size: 13px;
+      }
+      
+      input, textarea {
+        font-size: 16px;
+        padding: 6px 8px;
+      }
+      
+      .contact__scroll-top {
+        height: 22px;
+        width: 22px;
+        bottom: 8px;
+        right: 8px;
+      }
+    }
   `],
     animations: [fadeInLeft, fadeInUp]
 })

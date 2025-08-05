@@ -63,7 +63,7 @@ interface Skill {
     .skills {
       position: relative;
       width: 100%;
-      min-height: 600px;
+      min-height: 1000px;
       height: auto;
       background-color: var(--color-background-primary);
      padding: 4rem 0;

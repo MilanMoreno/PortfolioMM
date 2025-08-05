@@ -1443,8 +1443,10 @@ var FunctionsClient = class {
         if (!region) {
           region = this.region;
         }
+        const url = new URL(`${this.url}/${functionName}`);
         if (region && region !== "any") {
           _headers["x-region"] = region;
+          url.searchParams.set("forceFunctionRegion", region);
         }
         let body;
         if (functionArgs && (headers && !Object.prototype.hasOwnProperty.call(headers, "Content-Type") || !headers)) {
@@ -1461,7 +1463,7 @@ var FunctionsClient = class {
             body = JSON.stringify(functionArgs);
           }
         }
-        const response = yield this.fetch(`${this.url}/${functionName}`, {
+        const response = yield this.fetch(url.toString(), {
           method: method || "POST",
           // headers priority is (high to low):
           // 1. invoke-level headers
@@ -1494,12 +1496,14 @@ var FunctionsClient = class {
         }
         return {
           data,
-          error: null
+          error: null,
+          response
         };
       } catch (error) {
         return {
           data: null,
-          error
+          error,
+          response: error instanceof FunctionsHttpError || error instanceof FunctionsRelayError ? error.context : void 0
         };
       }
     });
@@ -1517,13 +1521,23 @@ var {
   PostgrestError
 } = import_cjs.default;
 
+// node_modules/isows/_esm/utils.js
+function getNativeWebSocket() {
+  if (typeof WebSocket !== "undefined") return WebSocket;
+  if (typeof global.WebSocket !== "undefined") return global.WebSocket;
+  if (typeof window.WebSocket !== "undefined") return window.WebSocket;
+  if (typeof self.WebSocket !== "undefined") return self.WebSocket;
+  throw new Error("`WebSocket` is not supported in this environment");
+}
+
+// node_modules/isows/_esm/native.js
+var WebSocket2 = getNativeWebSocket();
+
 // node_modules/@supabase/realtime-js/dist/module/lib/version.js
-var version = "2.11.2";
+var version = "2.11.15";
 
 // node_modules/@supabase/realtime-js/dist/module/lib/constants.js
-var DEFAULT_HEADERS = {
-  "X-Client-Info": `realtime-js/${version}`
-};
+var DEFAULT_VERSION = `realtime-js/${version}`;
 var VSN = "1.0.0";
 var DEFAULT_TIMEOUT = 1e4;
 var WS_CLOSE_NORMAL = 1e3;
@@ -2213,9 +2227,7 @@ var RealtimeChannel = class _RealtimeChannel {
     if (!this.socket.isConnected()) {
       this.socket.connect();
     }
-    if (this.joinedOnce) {
-      throw `tried to subscribe multiple times. 'subscribe' can only be called a single time per channel instance`;
-    } else {
+    if (this.state == CHANNEL_STATES.closed) {
       const {
         config: {
           broadcast,
@@ -2269,6 +2281,7 @@ var RealtimeChannel = class _RealtimeChannel {
               }));
             } else {
               this.unsubscribe();
+              this.state = CHANNEL_STATES.errored;
               callback === null || callback === void 0 ? void 0 : callback(REALTIME_SUBSCRIBE_STATES.CHANNEL_ERROR, new Error("mismatch between server and client bindings for postgres changes"));
               return;
             }
@@ -2278,6 +2291,7 @@ var RealtimeChannel = class _RealtimeChannel {
           return;
         }
       })).receive("error", (error) => {
+        this.state = CHANNEL_STATES.errored;
         callback === null || callback === void 0 ? void 0 : callback(REALTIME_SUBSCRIBE_STATES.CHANNEL_ERROR, new Error(JSON.stringify(Object.values(error).join(", ") || "error")));
         return;
       }).receive("timeout", () => {
@@ -2387,10 +2401,10 @@ var RealtimeChannel = class _RealtimeChannel {
       this.socket.log("channel", `leave ${this.topic}`);
       this._trigger(CHANNEL_EVENTS.close, "leave", this._joinRef());
     };
-    this.rejoinTimer.reset();
     this.joinPush.destroy();
+    let leavePush = null;
     return new Promise((resolve) => {
-      const leavePush = new Push(this, CHANNEL_EVENTS.leave, {}, timeout);
+      leavePush = new Push(this, CHANNEL_EVENTS.leave, {}, timeout);
       leavePush.receive("ok", () => {
         onClose();
         resolve("ok");
@@ -2404,7 +2418,19 @@ var RealtimeChannel = class _RealtimeChannel {
       if (!this._canPush()) {
         leavePush.trigger("ok", {});
       }
+    }).finally(() => {
+      leavePush === null || leavePush === void 0 ? void 0 : leavePush.destroy();
     });
+  }
+  /**
+   * Teardown the channel.
+   *
+   * Destroys and stops related timers.
+   */
+  teardown() {
+    this.pushBuffer.forEach((push) => push.destroy());
+    this.rejoinTimer && clearTimeout(this.rejoinTimer.timer);
+    this.joinPush.destroy();
   }
   /** @internal */
   _fetchWithTimeout(url, options, timeout) {
@@ -2629,7 +2655,6 @@ var RealtimeChannel = class _RealtimeChannel {
 // node_modules/@supabase/realtime-js/dist/module/RealtimeClient.js
 var noop2 = () => {
 };
-var NATIVE_WEBSOCKET_AVAILABLE = typeof WebSocket !== "undefined";
 var WORKER_SCRIPT = `
   addEventListener("message", (e) => {
     if (e.data.event === "start") {
@@ -2642,12 +2667,13 @@ var RealtimeClient = class {
    *
    * @param endPoint The string WebSocket endpoint, ie, "ws://example.com/socket", "wss://example.com", "/socket" (inherited host & protocol)
    * @param httpEndpoint The string HTTP endpoint, ie, "https://example.com", "/" (inherited host & protocol)
-   * @param options.transport The Websocket Transport, for example WebSocket.
+   * @param options.transport The Websocket Transport, for example WebSocket. This can be a custom implementation
    * @param options.timeout The default timeout in milliseconds to trigger push timeouts.
    * @param options.params The optional params to pass when connecting.
-   * @param options.headers The optional headers to pass when connecting.
+   * @param options.headers Deprecated: headers cannot be set on websocket connections and this option will be removed in the future.
    * @param options.heartbeatIntervalMs The millisec interval to send a heartbeat message.
    * @param options.logger The optional function for specialized logging, ie: logger: (kind, msg, data) => { console.log(`${kind}: ${msg}`, data) }
+   * @param options.logLevel Sets the log level for Realtime
    * @param options.encode The function to encode outgoing messages. Defaults to JSON: (payload, callback) => callback(JSON.stringify(payload))
    * @param options.decode The function to decode incoming messages. Defaults to Serializer's decode.
    * @param options.reconnectAfterMs he optional function that returns the millsec reconnect interval. Defaults to stepped backoff off.
@@ -2658,15 +2684,16 @@ var RealtimeClient = class {
     var _a;
     this.accessTokenValue = null;
     this.apiKey = null;
-    this.channels = [];
+    this.channels = new Array();
     this.endPoint = "";
     this.httpEndpoint = "";
-    this.headers = DEFAULT_HEADERS;
+    this.headers = {};
     this.params = {};
     this.timeout = DEFAULT_TIMEOUT;
-    this.heartbeatIntervalMs = 3e4;
+    this.heartbeatIntervalMs = 25e3;
     this.heartbeatTimer = void 0;
     this.pendingHeartbeatRef = null;
+    this.heartbeatCallback = noop2;
     this.ref = 0;
     this.logger = noop2;
     this.conn = null;
@@ -2700,9 +2727,14 @@ var RealtimeClient = class {
       this.transport = null;
     }
     if (options === null || options === void 0 ? void 0 : options.params) this.params = options.params;
-    if (options === null || options === void 0 ? void 0 : options.headers) this.headers = Object.assign(Object.assign({}, this.headers), options.headers);
     if (options === null || options === void 0 ? void 0 : options.timeout) this.timeout = options.timeout;
     if (options === null || options === void 0 ? void 0 : options.logger) this.logger = options.logger;
+    if ((options === null || options === void 0 ? void 0 : options.logLevel) || (options === null || options === void 0 ? void 0 : options.log_level)) {
+      this.logLevel = options.logLevel || options.log_level;
+      this.params = Object.assign(Object.assign({}, this.params), {
+        log_level: this.logLevel
+      });
+    }
     if (options === null || options === void 0 ? void 0 : options.heartbeatIntervalMs) this.heartbeatIntervalMs = options.heartbeatIntervalMs;
     const accessTokenValue = (_a = options === null || options === void 0 ? void 0 : options.params) === null || _a === void 0 ? void 0 : _a.apikey;
     if (accessTokenValue) {
@@ -2737,30 +2769,14 @@ var RealtimeClient = class {
     if (this.conn) {
       return;
     }
-    if (this.transport) {
-      this.conn = new this.transport(this.endpointURL(), void 0, {
-        headers: this.headers
-      });
-      return;
+    if (!this.transport) {
+      this.transport = WebSocket2;
     }
-    if (NATIVE_WEBSOCKET_AVAILABLE) {
-      this.conn = new WebSocket(this.endpointURL());
-      this.setupConnection();
-      return;
+    if (!this.transport) {
+      throw new Error("No transport provided");
     }
-    this.conn = new WSWebSocketDummy(this.endpointURL(), void 0, {
-      close: () => {
-        this.conn = null;
-      }
-    });
-    import("./browser-LV3Q5H36.js").then(({
-      default: WS
-    }) => {
-      this.conn = new WS(this.endpointURL(), void 0, {
-        headers: this.headers
-      });
-      this.setupConnection();
-    });
+    this.conn = new this.transport(this.endpointURL());
+    this.setupConnection();
   }
   /**
    * Returns the URL of the websocket.
@@ -2789,6 +2805,7 @@ var RealtimeClient = class {
       this.conn = null;
       this.heartbeatTimer && clearInterval(this.heartbeatTimer);
       this.reconnectTimer.reset();
+      this.channels.forEach((channel) => channel.teardown());
     }
   }
   /**
@@ -2816,6 +2833,7 @@ var RealtimeClient = class {
   removeAllChannels() {
     return __async(this, null, function* () {
       const values_1 = yield Promise.all(this.channels.map((channel) => channel.unsubscribe()));
+      this.channels = [];
       this.disconnect();
       return values_1;
     });
@@ -2852,9 +2870,15 @@ var RealtimeClient = class {
   channel(topic, params = {
     config: {}
   }) {
-    const chan = new RealtimeChannel(`realtime:${topic}`, params, this);
-    this.channels.push(chan);
-    return chan;
+    const realtimeTopic = `realtime:${topic}`;
+    const exists = this.getChannels().find((c) => c.topic === realtimeTopic);
+    if (!exists) {
+      const chan = new RealtimeChannel(`realtime:${topic}`, params, this);
+      this.channels.push(chan);
+      return chan;
+    } else {
+      return exists;
+    }
   }
   /**
    * Push out a message if the socket is connected.
@@ -2893,25 +2917,14 @@ var RealtimeClient = class {
   setAuth(token = null) {
     return __async(this, null, function* () {
       let tokenToSend = token || this.accessToken && (yield this.accessToken()) || this.accessTokenValue;
-      if (tokenToSend) {
-        let parsed = null;
-        try {
-          parsed = JSON.parse(atob(tokenToSend.split(".")[1]));
-        } catch (_error) {
-        }
-        if (parsed && parsed.exp) {
-          let now = Math.floor(Date.now() / 1e3);
-          let valid = now - parsed.exp < 0;
-          if (!valid) {
-            this.log("auth", `InvalidJWTToken: Invalid value for JWT claim "exp" with value ${parsed.exp}`);
-            return Promise.reject(`InvalidJWTToken: Invalid value for JWT claim "exp" with value ${parsed.exp}`);
-          }
-        }
+      if (this.accessTokenValue != tokenToSend) {
         this.accessTokenValue = tokenToSend;
         this.channels.forEach((channel) => {
-          tokenToSend && channel.updateJoinPayload({
-            access_token: tokenToSend
-          });
+          const payload = {
+            access_token: tokenToSend,
+            version: DEFAULT_VERSION
+          };
+          tokenToSend && channel.updateJoinPayload(payload);
           if (channel.joinedOnce && channel._isJoined()) {
             channel._push(CHANNEL_EVENTS.access_token, {
               access_token: tokenToSend
@@ -2928,11 +2941,13 @@ var RealtimeClient = class {
     return __async(this, null, function* () {
       var _a;
       if (!this.isConnected()) {
+        this.heartbeatCallback("disconnected");
         return;
       }
       if (this.pendingHeartbeatRef) {
         this.pendingHeartbeatRef = null;
         this.log("transport", "heartbeat timeout. Attempting to re-establish connection");
+        this.heartbeatCallback("timeout");
         (_a = this.conn) === null || _a === void 0 ? void 0 : _a.close(WS_CLOSE_NORMAL, "hearbeat timeout");
         return;
       }
@@ -2943,8 +2958,12 @@ var RealtimeClient = class {
         payload: {},
         ref: this.pendingHeartbeatRef
       });
-      this.setAuth();
+      this.heartbeatCallback("sent");
+      yield this.setAuth();
     });
+  }
+  onHeartbeat(callback) {
+    this.heartbeatCallback = callback;
   }
   /**
    * Flushes send buffer
@@ -2989,7 +3008,7 @@ var RealtimeClient = class {
    * @internal
    */
   _remove(channel) {
-    this.channels = this.channels.filter((c) => c._joinRef() !== channel._joinRef());
+    this.channels = this.channels.filter((c) => c.topic !== channel.topic);
   }
   /**
    * Sets up connection handlers.
@@ -3014,46 +3033,57 @@ var RealtimeClient = class {
         payload,
         ref
       } = msg;
+      if (topic === "phoenix" && event === "phx_reply") {
+        this.heartbeatCallback(msg.payload.status == "ok" ? "ok" : "error");
+      }
       if (ref && ref === this.pendingHeartbeatRef) {
         this.pendingHeartbeatRef = null;
       }
       this.log("receive", `${payload.status || ""} ${topic} ${event} ${ref && "(" + ref + ")" || ""}`, payload);
-      this.channels.filter((channel) => channel._isMember(topic)).forEach((channel) => channel._trigger(event, payload, ref));
+      Array.from(this.channels).filter((channel) => channel._isMember(topic)).forEach((channel) => channel._trigger(event, payload, ref));
       this.stateChangeCallbacks.message.forEach((callback) => callback(msg));
     });
   }
   /** @internal */
   _onConnOpen() {
-    return __async(this, null, function* () {
-      this.log("transport", `connected to ${this.endpointURL()}`);
-      this.flushSendBuffer();
-      this.reconnectTimer.reset();
-      if (!this.worker) {
-        this.heartbeatTimer && clearInterval(this.heartbeatTimer);
-        this.heartbeatTimer = setInterval(() => this.sendHeartbeat(), this.heartbeatIntervalMs);
-      } else {
-        if (this.workerUrl) {
-          this.log("worker", `starting worker for from ${this.workerUrl}`);
-        } else {
-          this.log("worker", `starting default worker`);
-        }
-        const objectUrl = this._workerObjectUrl(this.workerUrl);
-        this.workerRef = new Worker(objectUrl);
-        this.workerRef.onerror = (error) => {
-          this.log("worker", "worker error", error.message);
-          this.workerRef.terminate();
-        };
-        this.workerRef.onmessage = (event) => {
-          if (event.data.event === "keepAlive") {
-            this.sendHeartbeat();
-          }
-        };
-        this.workerRef.postMessage({
-          event: "start",
-          interval: this.heartbeatIntervalMs
-        });
+    this.log("transport", `connected to ${this.endpointURL()}`);
+    this.flushSendBuffer();
+    this.reconnectTimer.reset();
+    if (!this.worker) {
+      this._startHeartbeat();
+    } else {
+      if (!this.workerRef) {
+        this._startWorkerHeartbeat();
       }
-      this.stateChangeCallbacks.open.forEach((callback) => callback());
+    }
+    this.stateChangeCallbacks.open.forEach((callback) => callback());
+  }
+  /** @internal */
+  _startHeartbeat() {
+    this.heartbeatTimer && clearInterval(this.heartbeatTimer);
+    this.heartbeatTimer = setInterval(() => this.sendHeartbeat(), this.heartbeatIntervalMs);
+  }
+  /** @internal */
+  _startWorkerHeartbeat() {
+    if (this.workerUrl) {
+      this.log("worker", `starting worker for from ${this.workerUrl}`);
+    } else {
+      this.log("worker", `starting default worker`);
+    }
+    const objectUrl = this._workerObjectUrl(this.workerUrl);
+    this.workerRef = new Worker(objectUrl);
+    this.workerRef.onerror = (error) => {
+      this.log("worker", "worker error", error.message);
+      this.workerRef.terminate();
+    };
+    this.workerRef.onmessage = (event) => {
+      if (event.data.event === "keepAlive") {
+        this.sendHeartbeat();
+      }
+    };
+    this.workerRef.postMessage({
+      event: "start",
+      interval: this.heartbeatIntervalMs
     });
   }
   /** @internal */
@@ -3066,7 +3096,7 @@ var RealtimeClient = class {
   }
   /** @internal */
   _onConnError(error) {
-    this.log("transport", error.message);
+    this.log("transport", `${error}`);
     this._triggerChanError();
     this.stateChangeCallbacks.error.forEach((callback) => callback(error));
   }
@@ -3096,25 +3126,6 @@ var RealtimeClient = class {
     return result_url;
   }
 };
-var WSWebSocketDummy = class {
-  constructor(address, _protocols, options) {
-    this.binaryType = "arraybuffer";
-    this.onclose = () => {
-    };
-    this.onerror = () => {
-    };
-    this.onmessage = () => {
-    };
-    this.onopen = () => {
-    };
-    this.readyState = SOCKET_STATES.connecting;
-    this.send = () => {
-    };
-    this.url = null;
-    this.url = address;
-    this.close = options.close;
-  }
-};
 
 // node_modules/@supabase/storage-js/dist/module/lib/errors.js
 var StorageError = class extends Error {
@@ -3128,16 +3139,18 @@ function isStorageError(error) {
   return typeof error === "object" && error !== null && "__isStorageError" in error;
 }
 var StorageApiError = class extends StorageError {
-  constructor(message, status) {
+  constructor(message, status, statusCode) {
     super(message);
     this.name = "StorageApiError";
     this.status = status;
+    this.statusCode = statusCode;
   }
   toJSON() {
     return {
       name: this.name,
       message: this.message,
-      status: this.status
+      status: this.status,
+      statusCode: this.statusCode
     };
   }
 };
@@ -3209,6 +3222,13 @@ var recursiveToCamel = (item) => {
   });
   return result;
 };
+var isPlainObject = (value) => {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const prototype = Object.getPrototypeOf(value);
+  return (prototype === null || prototype === Object.prototype || Object.getPrototypeOf(prototype) === null) && !(Symbol.toStringTag in value) && !(Symbol.iterator in value);
+};
 
 // node_modules/@supabase/storage-js/dist/module/lib/fetch.js
 var __awaiter3 = function(thisArg, _arguments, P, generator) {
@@ -3243,7 +3263,9 @@ var handleError = (error, reject, options) => __awaiter3(void 0, void 0, void 0,
   const Res = yield resolveResponse();
   if (error instanceof Res && !(options === null || options === void 0 ? void 0 : options.noResolveJson)) {
     error.json().then((err) => {
-      reject(new StorageApiError(_getErrorMessage(err), error.status || 500));
+      const status = error.status || 500;
+      const statusCode = (err === null || err === void 0 ? void 0 : err.statusCode) || status + "";
+      reject(new StorageApiError(_getErrorMessage(err), status, statusCode));
     }).catch((err) => {
       reject(new StorageUnknownError(_getErrorMessage(err), err));
     });
@@ -3256,14 +3278,16 @@ var _getRequestParams = (method, options, parameters, body) => {
     method,
     headers: (options === null || options === void 0 ? void 0 : options.headers) || {}
   };
-  if (method === "GET") {
+  if (method === "GET" || !body) {
     return params;
   }
-  params.headers = Object.assign({
-    "Content-Type": "application/json"
-  }, options === null || options === void 0 ? void 0 : options.headers);
-  if (body) {
+  if (isPlainObject(body)) {
+    params.headers = Object.assign({
+      "Content-Type": "application/json"
+    }, options === null || options === void 0 ? void 0 : options.headers);
     params.body = JSON.stringify(body);
+  } else {
+    params.body = body;
   }
   return Object.assign(Object.assign({}, params), parameters);
 };
@@ -3396,30 +3420,19 @@ var StorageFileApi = class {
         }
         const cleanPath = this._removeEmptyFolders(path);
         const _path = this._getFinalPath(cleanPath);
-        const res = yield this.fetch(`${this.url}/object/${_path}`, Object.assign({
-          method,
-          body,
+        const data = yield (method == "PUT" ? put : post)(this.fetch, `${this.url}/object/${_path}`, body, Object.assign({
           headers
         }, (options === null || options === void 0 ? void 0 : options.duplex) ? {
           duplex: options.duplex
         } : {}));
-        const data = yield res.json();
-        if (res.ok) {
-          return {
-            data: {
-              path: cleanPath,
-              id: data.Id,
-              fullPath: data.Key
-            },
-            error: null
-          };
-        } else {
-          const error = data;
-          return {
-            data: null,
-            error
-          };
-        }
+        return {
+          data: {
+            path: cleanPath,
+            id: data.Id,
+            fullPath: data.Key
+          },
+          error: null
+        };
       } catch (error) {
         if (isStorageError(error)) {
           return {
@@ -3474,27 +3487,16 @@ var StorageFileApi = class {
           headers["cache-control"] = `max-age=${options.cacheControl}`;
           headers["content-type"] = options.contentType;
         }
-        const res = yield this.fetch(url.toString(), {
-          method: "PUT",
-          body,
+        const data = yield put(this.fetch, url.toString(), body, {
           headers
         });
-        const data = yield res.json();
-        if (res.ok) {
-          return {
-            data: {
-              path: cleanPath,
-              fullPath: data.Key
-            },
-            error: null
-          };
-        } else {
-          const error = data;
-          return {
-            data: null,
-            error
-          };
-        }
+        return {
+          data: {
+            path: cleanPath,
+            fullPath: data.Key
+          },
+          error: null
+        };
       } catch (error) {
         if (isStorageError(error)) {
           return {
@@ -3910,6 +3912,7 @@ var StorageFileApi = class {
   /**
    * Lists all the files within a bucket.
    * @param path The folder path.
+   * @param options Search options including limit (defaults to 100), offset, sortBy, and search
    */
   list(path, options, parameters) {
     return __awaiter4(this, void 0, void 0, function* () {
@@ -3945,7 +3948,7 @@ var StorageFileApi = class {
     return btoa(data);
   }
   _getFinalPath(path) {
-    return `${this.bucketId}/${path}`;
+    return `${this.bucketId}/${path.replace(/^\/+/, "")}`;
   }
   _removeEmptyFolders(path) {
     return path.replace(/^\/|\/$/g, "").replace(/\/+/g, "/");
@@ -3972,10 +3975,10 @@ var StorageFileApi = class {
 };
 
 // node_modules/@supabase/storage-js/dist/module/lib/version.js
-var version2 = "2.7.1";
+var version2 = "2.10.4";
 
 // node_modules/@supabase/storage-js/dist/module/lib/constants.js
-var DEFAULT_HEADERS2 = {
+var DEFAULT_HEADERS = {
   "X-Client-Info": `storage-js/${version2}`
 };
 
@@ -4008,9 +4011,16 @@ var __awaiter5 = function(thisArg, _arguments, P, generator) {
   });
 };
 var StorageBucketApi = class {
-  constructor(url, headers = {}, fetch2) {
-    this.url = url;
-    this.headers = Object.assign(Object.assign({}, DEFAULT_HEADERS2), headers);
+  constructor(url, headers = {}, fetch2, opts) {
+    const baseUrl = new URL(url);
+    if (opts === null || opts === void 0 ? void 0 : opts.useNewHostname) {
+      const isSupabaseHost = /supabase\.(co|in|red)$/.test(baseUrl.hostname);
+      if (isSupabaseHost && !baseUrl.hostname.includes("storage.supabase.")) {
+        baseUrl.hostname = baseUrl.hostname.replace("supabase.", "storage.supabase.");
+      }
+    }
+    this.url = baseUrl.href;
+    this.headers = Object.assign(Object.assign({}, DEFAULT_HEADERS), headers);
     this.fetch = resolveFetch2(fetch2);
   }
   /**
@@ -4075,6 +4085,8 @@ var StorageBucketApi = class {
    * The default value is null, which allows files with all mime types to be uploaded.
    * Each mime type specified can be a wildcard, e.g. image/*, or a specific mime type, e.g. image/png.
    * @returns newly created bucket id
+   * @param options.type (private-beta) specifies the bucket type. see `BucketType` for more details.
+   *   - default bucket type is `STANDARD`
    */
   createBucket(id, options = {
     public: false
@@ -4084,6 +4096,7 @@ var StorageBucketApi = class {
         const data = yield post(this.fetch, `${this.url}/bucket`, {
           id,
           name: id,
+          type: options.type,
           public: options.public,
           file_size_limit: options.fileSizeLimit,
           allowed_mime_types: options.allowedMimeTypes
@@ -4201,8 +4214,8 @@ var StorageBucketApi = class {
 
 // node_modules/@supabase/storage-js/dist/module/StorageClient.js
 var StorageClient = class extends StorageBucketApi {
-  constructor(url, headers = {}, fetch2) {
-    super(url, headers, fetch2);
+  constructor(url, headers = {}, fetch2, opts) {
+    super(url, headers, fetch2, opts);
   }
   /**
    * Perform file operation in a bucket.
@@ -4215,7 +4228,7 @@ var StorageClient = class extends StorageBucketApi {
 };
 
 // node_modules/@supabase/supabase-js/dist/module/lib/version.js
-var version3 = "2.49.8";
+var version3 = "2.53.0";
 
 // node_modules/@supabase/supabase-js/dist/module/lib/constants.js
 var JS_ENV = "";
@@ -4228,11 +4241,11 @@ if (typeof Deno !== "undefined") {
 } else {
   JS_ENV = "node";
 }
-var DEFAULT_HEADERS3 = {
+var DEFAULT_HEADERS2 = {
   "X-Client-Info": `supabase-js-${JS_ENV}/${version3}`
 };
 var DEFAULT_GLOBAL_OPTIONS = {
-  headers: DEFAULT_HEADERS3
+  headers: DEFAULT_HEADERS2
 };
 var DEFAULT_DB_OPTIONS = {
   schema: "public"
@@ -4359,6 +4372,7 @@ function applySettingDefaults(options, defaults) {
     db: Object.assign(Object.assign({}, DEFAULT_DB_OPTIONS2), dbOptions),
     auth: Object.assign(Object.assign({}, DEFAULT_AUTH_OPTIONS2), authOptions),
     realtime: Object.assign(Object.assign({}, DEFAULT_REALTIME_OPTIONS2), realtimeOptions),
+    storage: {},
     global: Object.assign(Object.assign(Object.assign({}, DEFAULT_GLOBAL_OPTIONS2), globalOptions), {
       headers: Object.assign(Object.assign({}, (_a = DEFAULT_GLOBAL_OPTIONS2 === null || DEFAULT_GLOBAL_OPTIONS2 === void 0 ? void 0 : DEFAULT_GLOBAL_OPTIONS2.headers) !== null && _a !== void 0 ? _a : {}), (_b = globalOptions === null || globalOptions === void 0 ? void 0 : globalOptions.headers) !== null && _b !== void 0 ? _b : {})
     }),
@@ -4375,7 +4389,7 @@ function applySettingDefaults(options, defaults) {
 }
 
 // node_modules/@supabase/auth-js/dist/module/lib/version.js
-var version4 = "2.69.1";
+var version4 = "2.71.1";
 
 // node_modules/@supabase/auth-js/dist/module/lib/constants.js
 var AUTO_REFRESH_TICK_DURATION_MS = 30 * 1e3;
@@ -4383,7 +4397,7 @@ var AUTO_REFRESH_TICK_THRESHOLD = 3;
 var EXPIRY_MARGIN_MS = AUTO_REFRESH_TICK_THRESHOLD * AUTO_REFRESH_TICK_DURATION_MS;
 var GOTRUE_URL = "http://localhost:9999";
 var STORAGE_KEY = "supabase.auth.token";
-var DEFAULT_HEADERS4 = {
+var DEFAULT_HEADERS3 = {
   "X-Client-Info": `gotrue-js/${version4}`
 };
 var API_VERSION_HEADER_NAME = "X-Supabase-Api-Version";
@@ -4394,7 +4408,7 @@ var API_VERSIONS = {
   }
 };
 var BASE64URL_REGEX = /^([a-z0-9_-]{4})*($|[a-z0-9_-]{3}$|[a-z0-9_-]{2}$)$/i;
-var JWKS_TTL = 6e5;
+var JWKS_TTL = 10 * 60 * 1e3;
 
 // node_modules/@supabase/auth-js/dist/module/lib/errors.js
 var AuthError = class extends Error {
@@ -4524,6 +4538,25 @@ var FROM_BASE64URL = (() => {
   }
   return charMap;
 })();
+function byteToBase64URL(byte, state, emit) {
+  if (byte !== null) {
+    state.queue = state.queue << 8 | byte;
+    state.queuedBits += 8;
+    while (state.queuedBits >= 6) {
+      const pos = state.queue >> state.queuedBits - 6 & 63;
+      emit(TO_BASE64URL[pos]);
+      state.queuedBits -= 6;
+    }
+  } else if (state.queuedBits > 0) {
+    state.queue = state.queue << 6 - state.queuedBits;
+    state.queuedBits = 6;
+    while (state.queuedBits >= 6) {
+      const pos = state.queue >> state.queuedBits - 6 & 63;
+      emit(TO_BASE64URL[pos]);
+      state.queuedBits -= 6;
+    }
+  }
+}
 function byteFromBase64URL(charCode, state, emit) {
   const bits = FROM_BASE64URL[charCode];
   if (bits > -1) {
@@ -4645,6 +4678,19 @@ function stringToUint8Array(str) {
   const result = [];
   stringToUTF8(str, (byte) => result.push(byte));
   return new Uint8Array(result);
+}
+function bytesToBase64URL(bytes) {
+  const result = [];
+  const state = {
+    queue: 0,
+    queuedBits: 0
+  };
+  const onChar = (char) => {
+    result.push(char);
+  };
+  bytes.forEach((byte) => byteToBase64URL(byte, state, onChar));
+  byteToBase64URL(null, state, onChar);
+  return result.join("");
 }
 
 // node_modules/@supabase/auth-js/dist/module/lib/helpers.js
@@ -4898,6 +4944,38 @@ function getAlgorithm(alg) {
       throw new Error("Invalid alg claim");
   }
 }
+var UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+function validateUUID(str) {
+  if (!UUID_REGEX.test(str)) {
+    throw new Error("@supabase/auth-js: Expected parameter to be UUID but is not");
+  }
+}
+function userNotAvailableProxy() {
+  const proxyTarget = {};
+  return new Proxy(proxyTarget, {
+    get: (target, prop) => {
+      if (prop === "__isUserNotAvailableProxy") {
+        return true;
+      }
+      if (typeof prop === "symbol") {
+        const sProp = prop.toString();
+        if (sProp === "Symbol(Symbol.toPrimitive)" || sProp === "Symbol(Symbol.toStringTag)" || sProp === "Symbol(util.inspect.custom)") {
+          return void 0;
+        }
+      }
+      throw new Error(`@supabase/auth-js: client was created with userStorage option and there was no user stored in the user storage. Accessing the "${prop}" property of the session object is not supported. Please use getUser() instead.`);
+    },
+    set: (_target, prop) => {
+      throw new Error(`@supabase/auth-js: client was created with userStorage option and there was no user stored in the user storage. Setting the "${prop}" property of the session object is not supported. Please use getUser() to fetch a user object you can manipulate.`);
+    },
+    deleteProperty: (_target, prop) => {
+      throw new Error(`@supabase/auth-js: client was created with userStorage option and there was no user stored in the user storage. Deleting the "${prop}" property of the session object is not supported. Please use getUser() to fetch a user object you can manipulate.`);
+    }
+  });
+}
+function deepClone(obj) {
+  return JSON.parse(JSON.stringify(obj));
+}
 
 // node_modules/@supabase/auth-js/dist/module/lib/fetch.js
 var __rest = function(s, e) {
@@ -5078,6 +5156,9 @@ function hasSession(data) {
   return data.access_token && data.refresh_token && data.expires_in;
 }
 
+// node_modules/@supabase/auth-js/dist/module/lib/types.js
+var SIGN_OUT_SCOPES = ["global", "local", "others"];
+
 // node_modules/@supabase/auth-js/dist/module/GoTrueAdminApi.js
 var __rest2 = function(s, e) {
   var t = {};
@@ -5106,8 +5187,11 @@ var GoTrueAdminApi = class {
    * @param jwt A valid, logged-in JWT.
    * @param scope The logout sope.
    */
-  signOut(jwt, scope = "global") {
-    return __async(this, null, function* () {
+  signOut(_0) {
+    return __async(this, arguments, function* (jwt, scope = SIGN_OUT_SCOPES[0]) {
+      if (SIGN_OUT_SCOPES.indexOf(scope) < 0) {
+        throw new Error(`@supabase/auth-js: Parameter scope must be one of ${SIGN_OUT_SCOPES.join(", ")}`);
+      }
       try {
         yield _request(this.fetch, "POST", `${this.url}/logout?scope=${scope}`, {
           headers: this.headers,
@@ -5285,6 +5369,7 @@ var GoTrueAdminApi = class {
    */
   getUserById(uid) {
     return __async(this, null, function* () {
+      validateUUID(uid);
       try {
         return yield _request(this.fetch, "GET", `${this.url}/admin/users/${uid}`, {
           headers: this.headers,
@@ -5312,6 +5397,7 @@ var GoTrueAdminApi = class {
    */
   updateUserById(uid, attributes) {
     return __async(this, null, function* () {
+      validateUUID(uid);
       try {
         return yield _request(this.fetch, "PUT", `${this.url}/admin/users/${uid}`, {
           body: attributes,
@@ -5342,6 +5428,7 @@ var GoTrueAdminApi = class {
    */
   deleteUser(id, shouldSoftDelete = false) {
     return __async(this, null, function* () {
+      validateUUID(id);
       try {
         return yield _request(this.fetch, "DELETE", `${this.url}/admin/users/${id}`, {
           headers: this.headers,
@@ -5365,6 +5452,7 @@ var GoTrueAdminApi = class {
   }
   _listFactors(params) {
     return __async(this, null, function* () {
+      validateUUID(params.userId);
       try {
         const {
           data,
@@ -5397,6 +5485,8 @@ var GoTrueAdminApi = class {
   }
   _deleteFactor(params) {
     return __async(this, null, function* () {
+      validateUUID(params.userId);
+      validateUUID(params.id);
       try {
         const data = yield _request(this.fetch, "DELETE", `${this.url}/admin/users/${params.userId}/factors/${params.id}`, {
           headers: this.headers
@@ -5419,26 +5509,6 @@ var GoTrueAdminApi = class {
 };
 
 // node_modules/@supabase/auth-js/dist/module/lib/local-storage.js
-var localStorageAdapter = {
-  getItem: (key) => {
-    if (!supportsLocalStorage()) {
-      return null;
-    }
-    return globalThis.localStorage.getItem(key);
-  },
-  setItem: (key, value) => {
-    if (!supportsLocalStorage()) {
-      return;
-    }
-    globalThis.localStorage.setItem(key, value);
-  },
-  removeItem: (key) => {
-    if (!supportsLocalStorage()) {
-      return;
-    }
-    globalThis.localStorage.removeItem(key);
-  }
-};
 function memoryLocalStorageAdapter(store = {}) {
   return {
     getItem: (key) => {
@@ -5486,6 +5556,8 @@ var LockAcquireTimeoutError = class extends Error {
   }
 };
 var NavigatorLockAcquireTimeoutError = class extends LockAcquireTimeoutError {
+};
+var ProcessLockAcquireTimeoutError = class extends LockAcquireTimeoutError {
 };
 function navigatorLock(name, acquireTimeout, fn) {
   return __async(this, null, function* () {
@@ -5541,6 +5613,35 @@ function navigatorLock(name, acquireTimeout, fn) {
     })));
   });
 }
+var PROCESS_LOCKS = {};
+function processLock(name, acquireTimeout, fn) {
+  return __async(this, null, function* () {
+    var _a;
+    const previousOperation = (_a = PROCESS_LOCKS[name]) !== null && _a !== void 0 ? _a : Promise.resolve();
+    const currentOperation = Promise.race([previousOperation.catch(() => {
+      return null;
+    }), acquireTimeout >= 0 ? new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new ProcessLockAcquireTimeoutError(`Acquring process lock with name "${name}" timed out`));
+      }, acquireTimeout);
+    }) : null].filter((x) => x)).catch((e) => {
+      if (e && e.isAcquireTimeout) {
+        throw e;
+      }
+      return null;
+    }).then(() => __async(this, null, function* () {
+      return yield fn();
+    }));
+    PROCESS_LOCKS[name] = currentOperation.catch((e) => __async(this, null, function* () {
+      if (e && e.isAcquireTimeout) {
+        yield previousOperation;
+        return null;
+      }
+      throw e;
+    }));
+    return yield currentOperation;
+  });
+}
 
 // node_modules/@supabase/auth-js/dist/module/GoTrueClient.js
 polyfillGlobalThis();
@@ -5550,7 +5651,7 @@ var DEFAULT_OPTIONS = {
   autoRefreshToken: true,
   persistSession: true,
   detectSessionInUrl: true,
-  headers: DEFAULT_HEADERS4,
+  headers: DEFAULT_HEADERS3,
   flowType: "implicit",
   debug: false,
   hasCustomAuthorizationHeader: false
@@ -5560,12 +5661,14 @@ function lockNoOp(name, acquireTimeout, fn) {
     return yield fn();
   });
 }
+var GLOBAL_JWKS = {};
 var GoTrueClient = class _GoTrueClient {
   /**
    * Create a new client for use in the browser.
    */
   constructor(options) {
     var _a, _b;
+    this.userStorage = null;
     this.memoryStorage = null;
     this.stateChangeEmitters = /* @__PURE__ */ new Map();
     this.autoRefreshTicker = null;
@@ -5611,10 +5714,12 @@ var GoTrueClient = class _GoTrueClient {
     } else {
       this.lock = lockNoOp;
     }
-    this.jwks = {
-      keys: []
-    };
-    this.jwks_cached_at = Number.MIN_SAFE_INTEGER;
+    if (!this.jwks) {
+      this.jwks = {
+        keys: []
+      };
+      this.jwks_cached_at = Number.MIN_SAFE_INTEGER;
+    }
     this.mfa = {
       verify: this._verify.bind(this),
       enroll: this._enroll.bind(this),
@@ -5629,11 +5734,14 @@ var GoTrueClient = class _GoTrueClient {
         this.storage = settings.storage;
       } else {
         if (supportsLocalStorage()) {
-          this.storage = localStorageAdapter;
+          this.storage = globalThis.localStorage;
         } else {
           this.memoryStorage = {};
           this.storage = memoryLocalStorageAdapter(this.memoryStorage);
         }
+      }
+      if (settings.userStorage) {
+        this.userStorage = settings.userStorage;
       }
     } else {
       this.memoryStorage = {};
@@ -5651,6 +5759,29 @@ var GoTrueClient = class _GoTrueClient {
       }));
     }
     this.initialize();
+  }
+  /**
+   * The JWKS used for verifying asymmetric JWTs
+   */
+  get jwks() {
+    var _a, _b;
+    return (_b = (_a = GLOBAL_JWKS[this.storageKey]) === null || _a === void 0 ? void 0 : _a.jwks) !== null && _b !== void 0 ? _b : {
+      keys: []
+    };
+  }
+  set jwks(value) {
+    GLOBAL_JWKS[this.storageKey] = Object.assign(Object.assign({}, GLOBAL_JWKS[this.storageKey]), {
+      jwks: value
+    });
+  }
+  get jwks_cached_at() {
+    var _a, _b;
+    return (_b = (_a = GLOBAL_JWKS[this.storageKey]) === null || _a === void 0 ? void 0 : _a.cachedAt) !== null && _b !== void 0 ? _b : Number.MIN_SAFE_INTEGER;
+  }
+  set jwks_cached_at(value) {
+    GLOBAL_JWKS[this.storageKey] = Object.assign(Object.assign({}, GLOBAL_JWKS[this.storageKey]), {
+      cachedAt: value
+    });
   }
   _debug(...args) {
     if (this.logDebugMessages) {
@@ -6033,6 +6164,141 @@ var GoTrueClient = class _GoTrueClient {
       return this._acquireLock(-1, () => __async(this, null, function* () {
         return this._exchangeCodeForSession(authCode);
       }));
+    });
+  }
+  /**
+   * Signs in a user by verifying a message signed by the user's private key.
+   * Only Solana supported at this time, using the Sign in with Solana standard.
+   */
+  signInWithWeb3(credentials) {
+    return __async(this, null, function* () {
+      const {
+        chain
+      } = credentials;
+      if (chain === "solana") {
+        return yield this.signInWithSolana(credentials);
+      }
+      throw new Error(`@supabase/auth-js: Unsupported chain "${chain}"`);
+    });
+  }
+  signInWithSolana(credentials) {
+    return __async(this, null, function* () {
+      var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
+      let message;
+      let signature;
+      if ("message" in credentials) {
+        message = credentials.message;
+        signature = credentials.signature;
+      } else {
+        const {
+          chain,
+          wallet,
+          statement,
+          options
+        } = credentials;
+        let resolvedWallet;
+        if (!isBrowser()) {
+          if (typeof wallet !== "object" || !(options === null || options === void 0 ? void 0 : options.url)) {
+            throw new Error("@supabase/auth-js: Both wallet and url must be specified in non-browser environments.");
+          }
+          resolvedWallet = wallet;
+        } else if (typeof wallet === "object") {
+          resolvedWallet = wallet;
+        } else {
+          const windowAny = window;
+          if ("solana" in windowAny && typeof windowAny.solana === "object" && ("signIn" in windowAny.solana && typeof windowAny.solana.signIn === "function" || "signMessage" in windowAny.solana && typeof windowAny.solana.signMessage === "function")) {
+            resolvedWallet = windowAny.solana;
+          } else {
+            throw new Error(`@supabase/auth-js: No compatible Solana wallet interface on the window object (window.solana) detected. Make sure the user already has a wallet installed and connected for this app. Prefer passing the wallet interface object directly to signInWithWeb3({ chain: 'solana', wallet: resolvedUserWallet }) instead.`);
+          }
+        }
+        const url = new URL((_a = options === null || options === void 0 ? void 0 : options.url) !== null && _a !== void 0 ? _a : window.location.href);
+        if ("signIn" in resolvedWallet && resolvedWallet.signIn) {
+          const output = yield resolvedWallet.signIn(Object.assign(Object.assign(Object.assign({
+            issuedAt: (/* @__PURE__ */ new Date()).toISOString()
+          }, options === null || options === void 0 ? void 0 : options.signInWithSolana), {
+            // non-overridable properties
+            version: "1",
+            domain: url.host,
+            uri: url.href
+          }), statement ? {
+            statement
+          } : null));
+          let outputToProcess;
+          if (Array.isArray(output) && output[0] && typeof output[0] === "object") {
+            outputToProcess = output[0];
+          } else if (output && typeof output === "object" && "signedMessage" in output && "signature" in output) {
+            outputToProcess = output;
+          } else {
+            throw new Error("@supabase/auth-js: Wallet method signIn() returned unrecognized value");
+          }
+          if ("signedMessage" in outputToProcess && "signature" in outputToProcess && (typeof outputToProcess.signedMessage === "string" || outputToProcess.signedMessage instanceof Uint8Array) && outputToProcess.signature instanceof Uint8Array) {
+            message = typeof outputToProcess.signedMessage === "string" ? outputToProcess.signedMessage : new TextDecoder().decode(outputToProcess.signedMessage);
+            signature = outputToProcess.signature;
+          } else {
+            throw new Error("@supabase/auth-js: Wallet method signIn() API returned object without signedMessage and signature fields");
+          }
+        } else {
+          if (!("signMessage" in resolvedWallet) || typeof resolvedWallet.signMessage !== "function" || !("publicKey" in resolvedWallet) || typeof resolvedWallet !== "object" || !resolvedWallet.publicKey || !("toBase58" in resolvedWallet.publicKey) || typeof resolvedWallet.publicKey.toBase58 !== "function") {
+            throw new Error("@supabase/auth-js: Wallet does not have a compatible signMessage() and publicKey.toBase58() API");
+          }
+          message = [`${url.host} wants you to sign in with your Solana account:`, resolvedWallet.publicKey.toBase58(), ...statement ? ["", statement, ""] : [""], "Version: 1", `URI: ${url.href}`, `Issued At: ${(_c = (_b = options === null || options === void 0 ? void 0 : options.signInWithSolana) === null || _b === void 0 ? void 0 : _b.issuedAt) !== null && _c !== void 0 ? _c : (/* @__PURE__ */ new Date()).toISOString()}`, ...((_d = options === null || options === void 0 ? void 0 : options.signInWithSolana) === null || _d === void 0 ? void 0 : _d.notBefore) ? [`Not Before: ${options.signInWithSolana.notBefore}`] : [], ...((_e = options === null || options === void 0 ? void 0 : options.signInWithSolana) === null || _e === void 0 ? void 0 : _e.expirationTime) ? [`Expiration Time: ${options.signInWithSolana.expirationTime}`] : [], ...((_f = options === null || options === void 0 ? void 0 : options.signInWithSolana) === null || _f === void 0 ? void 0 : _f.chainId) ? [`Chain ID: ${options.signInWithSolana.chainId}`] : [], ...((_g = options === null || options === void 0 ? void 0 : options.signInWithSolana) === null || _g === void 0 ? void 0 : _g.nonce) ? [`Nonce: ${options.signInWithSolana.nonce}`] : [], ...((_h = options === null || options === void 0 ? void 0 : options.signInWithSolana) === null || _h === void 0 ? void 0 : _h.requestId) ? [`Request ID: ${options.signInWithSolana.requestId}`] : [], ...((_k = (_j = options === null || options === void 0 ? void 0 : options.signInWithSolana) === null || _j === void 0 ? void 0 : _j.resources) === null || _k === void 0 ? void 0 : _k.length) ? ["Resources", ...options.signInWithSolana.resources.map((resource) => `- ${resource}`)] : []].join("\n");
+          const maybeSignature = yield resolvedWallet.signMessage(new TextEncoder().encode(message), "utf8");
+          if (!maybeSignature || !(maybeSignature instanceof Uint8Array)) {
+            throw new Error("@supabase/auth-js: Wallet signMessage() API returned an recognized value");
+          }
+          signature = maybeSignature;
+        }
+      }
+      try {
+        const {
+          data,
+          error
+        } = yield _request(this.fetch, "POST", `${this.url}/token?grant_type=web3`, {
+          headers: this.headers,
+          body: Object.assign({
+            chain: "solana",
+            message,
+            signature: bytesToBase64URL(signature)
+          }, ((_l = credentials.options) === null || _l === void 0 ? void 0 : _l.captchaToken) ? {
+            gotrue_meta_security: {
+              captcha_token: (_m = credentials.options) === null || _m === void 0 ? void 0 : _m.captchaToken
+            }
+          } : null),
+          xform: _sessionResponse
+        });
+        if (error) {
+          throw error;
+        }
+        if (!data || !data.session || !data.user) {
+          return {
+            data: {
+              user: null,
+              session: null
+            },
+            error: new AuthInvalidTokenResponseError()
+          };
+        }
+        if (data.session) {
+          yield this._saveSession(data.session);
+          yield this._notifyAllSubscribers("SIGNED_IN", data.session);
+        }
+        return {
+          data: Object.assign({}, data),
+          error
+        };
+      } catch (error) {
+        if (isAuthError(error)) {
+          return {
+            data: {
+              user: null,
+              session: null
+            },
+            error
+          };
+        }
+        throw error;
+      }
     });
   }
   _exchangeCodeForSession(authCode) {
@@ -6623,7 +6889,15 @@ var GoTrueClient = class _GoTrueClient {
         const hasExpired = currentSession.expires_at ? currentSession.expires_at * 1e3 - Date.now() < EXPIRY_MARGIN_MS : false;
         this._debug("#__loadSession()", `session has${hasExpired ? "" : " not"} expired`, "expires_at", currentSession.expires_at);
         if (!hasExpired) {
-          if (this.storage.isServer) {
+          if (this.userStorage) {
+            const maybeUser = yield getItemAsync(this.userStorage, this.storageKey + "-user");
+            if (maybeUser === null || maybeUser === void 0 ? void 0 : maybeUser.user) {
+              currentSession.user = maybeUser.user;
+            } else {
+              currentSession.user = userNotAvailableProxy();
+            }
+          }
+          if (this.storage.isServer && currentSession.user) {
             let suppressWarning = this.suppressGetSessionWarning;
             const proxySession = new Proxy(currentSession, {
               get: (target, prop, receiver) => {
@@ -7441,11 +7715,32 @@ var GoTrueClient = class _GoTrueClient {
    */
   _recoverAndRefresh() {
     return __async(this, null, function* () {
-      var _a;
+      var _a, _b;
       const debugName = "#_recoverAndRefresh()";
       this._debug(debugName, "begin");
       try {
         const currentSession = yield getItemAsync(this.storage, this.storageKey);
+        if (currentSession && this.userStorage) {
+          let maybeUser = yield getItemAsync(this.userStorage, this.storageKey + "-user");
+          if (!this.storage.isServer && Object.is(this.storage, this.userStorage) && !maybeUser) {
+            maybeUser = {
+              user: currentSession.user
+            };
+            yield setItemAsync(this.userStorage, this.storageKey + "-user", maybeUser);
+          }
+          currentSession.user = (_a = maybeUser === null || maybeUser === void 0 ? void 0 : maybeUser.user) !== null && _a !== void 0 ? _a : userNotAvailableProxy();
+        } else if (currentSession && !currentSession.user) {
+          if (!currentSession.user) {
+            const separateUser = yield getItemAsync(this.storage, this.storageKey + "-user");
+            if (separateUser && (separateUser === null || separateUser === void 0 ? void 0 : separateUser.user)) {
+              currentSession.user = separateUser.user;
+              yield removeItemAsync(this.storage, this.storageKey + "-user");
+              yield setItemAsync(this.storage, this.storageKey, currentSession);
+            } else {
+              currentSession.user = userNotAvailableProxy();
+            }
+          }
+        }
         this._debug(debugName, "session from storage", currentSession);
         if (!this._isValidSession(currentSession)) {
           this._debug(debugName, "session is not valid");
@@ -7454,7 +7749,7 @@ var GoTrueClient = class _GoTrueClient {
           }
           return;
         }
-        const expiresWithMargin = ((_a = currentSession.expires_at) !== null && _a !== void 0 ? _a : Infinity) * 1e3 - Date.now() < EXPIRY_MARGIN_MS;
+        const expiresWithMargin = ((_b = currentSession.expires_at) !== null && _b !== void 0 ? _b : Infinity) * 1e3 - Date.now() < EXPIRY_MARGIN_MS;
         this._debug(debugName, `session has${expiresWithMargin ? "" : " not"} expired with margin of ${EXPIRY_MARGIN_MS}s`);
         if (expiresWithMargin) {
           if (this.autoRefreshToken && currentSession.refresh_token) {
@@ -7468,6 +7763,23 @@ var GoTrueClient = class _GoTrueClient {
                 yield this._removeSession();
               }
             }
+          }
+        } else if (currentSession.user && currentSession.user.__isUserNotAvailableProxy === true) {
+          try {
+            const {
+              data,
+              error: userError
+            } = yield this._getUser(currentSession.access_token);
+            if (!userError && (data === null || data === void 0 ? void 0 : data.user)) {
+              currentSession.user = data.user;
+              yield this._saveSession(currentSession);
+              yield this._notifyAllSubscribers("SIGNED_IN", currentSession);
+            } else {
+              this._debug(debugName, "could not get user data, skipping SIGNED_IN notification");
+            }
+          } catch (getUserError) {
+            console.error("Error getting user data:", getUserError);
+            this._debug(debugName, "error getting user data, skipping SIGNED_IN notification", getUserError);
           }
         } else {
           yield this._notifyAllSubscribers("SIGNED_IN", currentSession);
@@ -7568,13 +7880,34 @@ var GoTrueClient = class _GoTrueClient {
     return __async(this, null, function* () {
       this._debug("#_saveSession()", session);
       this.suppressGetSessionWarning = true;
-      yield setItemAsync(this.storage, this.storageKey, session);
+      const sessionToProcess = Object.assign({}, session);
+      const userIsProxy = sessionToProcess.user && sessionToProcess.user.__isUserNotAvailableProxy === true;
+      if (this.userStorage) {
+        if (!userIsProxy && sessionToProcess.user) {
+          yield setItemAsync(this.userStorage, this.storageKey + "-user", {
+            user: sessionToProcess.user
+          });
+        } else if (userIsProxy) {
+        }
+        const mainSessionData = Object.assign({}, sessionToProcess);
+        delete mainSessionData.user;
+        const clonedMainSessionData = deepClone(mainSessionData);
+        yield setItemAsync(this.storage, this.storageKey, clonedMainSessionData);
+      } else {
+        const clonedSession = deepClone(sessionToProcess);
+        yield setItemAsync(this.storage, this.storageKey, clonedSession);
+      }
     });
   }
   _removeSession() {
     return __async(this, null, function* () {
       this._debug("#_removeSession()");
       yield removeItemAsync(this.storage, this.storageKey);
+      yield removeItemAsync(this.storage, this.storageKey + "-code-verifier");
+      yield removeItemAsync(this.storage, this.storageKey + "-user");
+      if (this.userStorage) {
+        yield removeItemAsync(this.userStorage, this.storageKey + "-user");
+      }
       yield this._notifyAllSubscribers("SIGNED_OUT", null);
     });
   }
@@ -8102,8 +8435,9 @@ var GoTrueClient = class _GoTrueClient {
       if (jwk) {
         return jwk;
       }
+      const now = Date.now();
       jwk = this.jwks.keys.find((key) => key.kid === kid);
-      if (jwk && this.jwks_cached_at + JWKS_TTL > Date.now()) {
+      if (jwk && this.jwks_cached_at + JWKS_TTL > now) {
         return jwk;
       }
       const {
@@ -8116,25 +8450,35 @@ var GoTrueClient = class _GoTrueClient {
         throw error;
       }
       if (!data.keys || data.keys.length === 0) {
-        throw new AuthInvalidJwtError("JWKS is empty");
+        return null;
       }
       this.jwks = data;
-      this.jwks_cached_at = Date.now();
+      this.jwks_cached_at = now;
       jwk = data.keys.find((key) => key.kid === kid);
       if (!jwk) {
-        throw new AuthInvalidJwtError("No matching signing key found in JWKS");
+        return null;
       }
       return jwk;
     });
   }
   /**
-   * @experimental This method may change in future versions.
-   * @description Gets the claims from a JWT. If the JWT is symmetric JWTs, it will call getUser() to verify against the server. If the JWT is asymmetric, it will be verified against the JWKS using the WebCrypto API.
+   * Extracts the JWT claims present in the access token by first verifying the
+   * JWT against the server's JSON Web Key Set endpoint
+   * `/.well-known/jwks.json` which is often cached, resulting in significantly
+   * faster responses. Prefer this method over {@link #getUser} which always
+   * sends a request to the Auth server for each JWT.
+   *
+   * If the project is not using an asymmetric JWT signing key (like ECC or
+   * RSA) it always sends a request to the Auth server (similar to {@link
+   * #getUser}) to verify the JWT.
+   *
+   * @param jwt An optional specific JWT you wish to verify, not the one you
+   *            can obtain from {@link #getSession}.
+   * @param options Various additional options that allow you to customize the
+   *                behavior of this method.
    */
   getClaims(_0) {
-    return __async(this, arguments, function* (jwt, jwks = {
-      keys: []
-    }) {
+    return __async(this, arguments, function* (jwt, options = {}) {
       try {
         let token = jwt;
         if (!token) {
@@ -8159,8 +8503,13 @@ var GoTrueClient = class _GoTrueClient {
             payload: rawPayload
           }
         } = decodeJWT(token);
-        validateExp(payload.exp);
-        if (!header.kid || header.alg === "HS256" || !("crypto" in globalThis && "subtle" in globalThis.crypto)) {
+        if (!(options === null || options === void 0 ? void 0 : options.allowExpired)) {
+          validateExp(payload.exp);
+        }
+        const signingKey = !header.alg || header.alg.startsWith("HS") || !header.kid || !("crypto" in globalThis && "subtle" in globalThis.crypto) ? null : yield this.fetchJwk(header.kid, (options === null || options === void 0 ? void 0 : options.keys) ? {
+          keys: options.keys
+        } : options === null || options === void 0 ? void 0 : options.jwks);
+        if (!signingKey) {
           const {
             error
           } = yield this.getUser(token);
@@ -8177,7 +8526,6 @@ var GoTrueClient = class _GoTrueClient {
           };
         }
         const algorithm = getAlgorithm(header.alg);
-        const signingKey = yield this.fetchJwk(header.kid, jwks);
         const publicKey = yield crypto.subtle.importKey("jwk", signingKey, algorithm, true, ["verify"]);
         const isValid = yield crypto.subtle.verify(algorithm, publicKey, signature, stringToUint8Array(`${rawHeader}.${rawPayload}`));
         if (!isValid) {
@@ -8258,6 +8606,7 @@ var SupabaseClient = class {
    * @param options.auth.persistSession Set to "true" if you want to automatically save the user session into local storage.
    * @param options.auth.detectSessionInUrl Set to "true" if you want to automatically detects OAuth grants in the URL and signs in the user.
    * @param options.realtime Options passed along to realtime-js constructor.
+   * @param options.storage Options passed along to the storage-js constructor.
    * @param options.global.fetch A custom fetch implementation.
    * @param options.global.headers Any additional headers to send with each network request.
    */
@@ -8306,6 +8655,7 @@ var SupabaseClient = class {
       schema: settings.db.schema,
       fetch: this.fetch
     });
+    this.storage = new StorageClient(this.storageUrl.href, this.headers, this.fetch, options === null || options === void 0 ? void 0 : options.storage);
     if (!settings.accessToken) {
       this._listenForAuthEvents();
     }
@@ -8318,12 +8668,6 @@ var SupabaseClient = class {
       headers: this.headers,
       customFetch: this.fetch
     });
-  }
-  /**
-   * Supabase Storage allows you to manage user-generated content, such as photos or videos.
-   */
-  get storage() {
-    return new StorageClient(this.storageUrl.href, this.headers, this.fetch);
   }
   /**
    * Perform a query on a table or a view.
@@ -8475,6 +8819,20 @@ var SupabaseClient = class {
 var createClient = (supabaseUrl, supabaseKey, options) => {
   return new SupabaseClient(supabaseUrl, supabaseKey, options);
 };
+function shouldShowDeprecationWarning() {
+  if (typeof window !== "undefined" || typeof process === "undefined" || process.version === void 0 || process.version === null) {
+    return false;
+  }
+  const versionMatch = process.version.match(/^v(\d+)\./);
+  if (!versionMatch) {
+    return false;
+  }
+  const majorVersion = parseInt(versionMatch[1], 10);
+  return majorVersion <= 18;
+}
+if (shouldShowDeprecationWarning()) {
+  console.warn(`⚠️  Node.js 18 and below are deprecated and will no longer be supported in future versions of @supabase/supabase-js. Please upgrade to Node.js 20 or later. For more information, visit: https://github.com/orgs/supabase/discussions/37217`);
+}
 export {
   AuthAdminApi_default as AuthAdminApi,
   AuthApiError,
@@ -8507,6 +8865,7 @@ export {
   RealtimeChannel,
   RealtimeClient,
   RealtimePresence,
+  SIGN_OUT_SCOPES,
   SupabaseClient,
   createClient,
   isAuthApiError,
@@ -8516,6 +8875,7 @@ export {
   isAuthSessionMissingError,
   isAuthWeakPasswordError,
   internals as lockInternals,
-  navigatorLock
+  navigatorLock,
+  processLock
 };
 //# sourceMappingURL=@supabase_supabase-js.js.map

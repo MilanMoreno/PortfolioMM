@@ -67,7 +67,7 @@ import { fadeInLeft, fadeInUp } from '../../../../shared/animations/fade.animati
       justify-content: center;
       width: 100%;
       background-color: var(--color-background-primary);
-      min-height: 600px;
+      min-height: 1000px;
       height: auto;
      padding: 4rem 0;
       overflow: visible;
@@ -182,7 +182,7 @@ import { fadeInLeft, fadeInUp } from '../../../../shared/animations/fade.animati
         
     .about__heading {
       font-size: 45px;
-       padding-top: 100px !important;
+       padding-top: 20px !important;
       }
     }
 
